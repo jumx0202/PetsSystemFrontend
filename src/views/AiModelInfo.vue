@@ -23,11 +23,11 @@
             <span class="icon">🧠</span> 模型选择与架构 (Model Architecture)
           </h2>
           <p>
-            我们选用了基于 <strong>ResNet50（残差网络）</strong> 架构进行深度特征提取，并在顶层加入全连接分类器完成微调（Fine-tuning）。
+            我们选用了基于 <strong>EfficientNet-B4</strong> 架构进行深度特征提取与迁移学习。EfficientNet 是计算机视觉领域极具代表性的轻量高精模型，通过复合缩放方法（Compound Scaling）在网络深度、宽度和分辨率之间取得了绝佳的平衡。
           </p>
           <ul>
-            <li><strong>为什么选择 ResNet50？</strong> 传统的深层网络容易出现梯度消失或爆炸问题，而 ResNet 引入的“残差连接 (Skip Connection)”允许网络加深到 50 层以上，提取出极其丰富的动物皮毛纹理和骨骼轮廓特征。</li>
-            <li><strong>轻量化考量：</strong> 为了保证用户上传图片后的极速响应，我们在导出 ONNX 格式时对模型参数进行了量化压缩，使其能够在普通 CPU 环境下达到毫秒级的推理延迟。</li>
+            <li><strong>为什么选择 EfficientNet-B4？</strong> 相较于早期的 ResNet 系列，B4 节点在仅消耗约 19M 参数量的前提下，提供了极强的细粒度品种区分能力（如区分各种相近的猫狗）。</li>
+            <li><strong>两阶段迁移学习 (Two-Stage Fine-tuning)：</strong> 训练分为两个阶段。首先冻结骨干网络，使用较大的学习率预热训练分类头（Epoch 1-5）；然后解冻全网络，使用极小的学习率微调骨干特征（Epoch 6-25），防止破坏在 ImageNet 上学到的预训练特征。</li>
           </ul>
         </div>
 
@@ -37,7 +37,7 @@
             <span class="icon">📚</span> 训练数据集 (Dataset)
           </h2>
           <p>
-            优质的模型离不开庞大且干净的数据集支撑。我们基于经典的学术数据集（如 Oxford-IIIT Pet Dataset）进行了大规模的数据清洗与扩充。
+            基于牛津大学视觉几何组（VGG）发布的权威学术基准 —— <strong>Oxford-IIIT Pet Dataset</strong>。该数据集被众多顶会论文用作细粒度分类的标准 benchmark。
           </p>
           <div class="stats-grid">
             <div class="stat-item">
@@ -46,19 +46,19 @@
             </div>
             <div class="stat-item">
               <div class="stat-num">12</div>
-              <div class="stat-desc">常见猫品种</div>
+              <div class="stat-desc">猫品种数</div>
             </div>
             <div class="stat-item">
               <div class="stat-num">25</div>
-              <div class="stat-desc">常见狗品种</div>
+              <div class="stat-desc">狗品种数</div>
             </div>
             <div class="stat-item">
-              <div class="stat-num">20,000+</div>
-              <div class="stat-desc">高质量训练图像</div>
+              <div class="stat-num">~7,349</div>
+              <div class="stat-desc">高质量图像总量</div>
             </div>
           </div>
           <p>
-            所有的图像均经过了人工审查，确保了每张图片都具备清晰的面部特征，并且包含室内、室外、不同光照等多样化场景。
+            数据集按照官方标准严谨划分为训练集（约78%）、验证集（约10%）和测试集（约12%），确保模型评估的绝对客观性，不存在数据泄露。
           </p>
         </div>
 
@@ -67,28 +67,28 @@
           <h2 class="block-title">
             <span class="icon">⚙️</span> 数据预处理 (Data Preprocessing)
           </h2>
-          <p>为了让模型具有更强的抗干扰能力（泛化能力），我们在训练阶段采用了以下数据预处理与增强策略：</p>
+          <p>为了让模型具有更强的泛化能力并匹配 EfficientNet-B4 的 380×380 输入尺寸，训练阶段采用了复合数据增强策略：</p>
           <div class="code-block">
-            <div class="code-line">1. <strong>尺寸统一化 (Resize)：</strong> 将输入图像统一缩放至 224×224 像素。</div>
-            <div class="code-line">2. <strong>随机裁剪 (Random Crop)：</strong> 模拟用户拍照时宠物未居中的情况。</div>
-            <div class="code-line">3. <strong>水平翻转 (Horizontal Flip)：</strong> 增加模型对不同朝向宠物的识别能力。</div>
-            <div class="code-line">4. <strong>色彩抖动 (Color Jitter)：</strong> 随机调整亮度、对比度和饱和度，降低光照对识别的干扰。</div>
-            <div class="code-line">5. <strong>标准化 (Normalization)：</strong> 使用 ImageNet 的标准均值和标准差归一化输入张量。</div>
+            <div class="code-line">1. <strong>尺寸处理：</strong> 先缩放至 400×400，再随机裁剪 (Random Crop) 至目标尺寸 380×380，增加位置多样性。</div>
+            <div class="code-line">2. <strong>空间变换：</strong> 随机水平翻转 (Random Horizontal Flip) 与 ±15° 随机旋转 (Random Rotation)。</div>
+            <div class="code-line">3. <strong>色彩抖动：</strong> 调整亮度(30%)、对比度(30%)、饱和度(20%) 和 色调(5%)，降低光照干扰。</div>
+            <div class="code-line">4. <strong>灰度转换：</strong> 5% 概率转换为灰度图 (Random Grayscale)，防止模型过度依赖颜色判断。</div>
+            <div class="code-line">5. <strong>标准化 (Normalization)：</strong> 使用 ImageNet 统计量 (均值 [0.485, 0.456, 0.406] 和标准差 [0.229, 0.224, 0.225]) 归一化输入张量。</div>
           </div>
         </div>
 
         <!-- 4. 性能表现 -->
         <div class="info-block">
           <h2 class="block-title">
-            <span class="icon">⚡</span> 性能评估 (Performance)
+            <span class="icon">⚡</span> 训练效果与部署 (Performance & Deployment)
           </h2>
           <p>
-            经过数十次迭代训练，本模型在独立的测试集上展现了优异的性能：
+            经过在 Apple M 系列芯片上的 MPS 加速训练，最终选出的最优快照达到了以下性能指标：
           </p>
           <ul>
-            <li><strong>Top-1 准确率 (Accuracy)：</strong> 达到 <span class="highlight">96.1%</span>，这意味着绝大多数情况下首选结果即为正确品种。</li>
-            <li><strong>Top-3 准确率：</strong> 高达 <strong>98.9%</strong>，针对极易混淆的品种（如哈士奇与阿拉斯加），前三个选项中必含正确答案。</li>
-            <li><strong>推理耗时：</strong> 在标准服务器环境下，单张图片的特征推理及响应时间不超过 <span class="highlight">200ms</span>。</li>
+            <li><strong>最终测试集准确率 (Test Accuracy)：</strong> 达到 <span class="highlight">96.09%</span>。这在难度极高的 37 类细粒度分类任务中属于相当优秀的水准。</li>
+            <li><strong>验证集与训练集对比：</strong> 最终轮验证集准确率 94.85%，训练集 99.85%，训练与验证差距维持在合理的 ~5%，说明数据增强起到了良好的正则化作用。</li>
+            <li><strong>ONNX 工程化部署：</strong> 模型采用 PyTorch 2.x 最新的 Dynamo 导出器无损转化为 ONNX 格式。计算图结构仅占用 1MB，模型权重独立为 68MB 文件，搭配 FastAPI + ONNX Runtime 提供极速响应的工业级推理微服务。</li>
           </ul>
         </div>
 
