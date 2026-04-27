@@ -330,6 +330,7 @@ const navigateTo = (path: string) => {
   box-shadow: 0 4px 20px rgba(0,0,0,0.03);
   border: 1px solid rgba(0,0,0,0.02);
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
 }
 
 .feature-card:hover {
