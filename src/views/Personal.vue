@@ -36,7 +36,7 @@
           <div class="number">{{ favorites.length }}</div>
           <div class="label">收藏</div>
         </button>
-        <div class="stat-card">
+        <div class="stat-card" @click="router.push('/pet-profile')">
           <div class="number">{{ user.petCount }}</div>
           <div class="label">我的宠物</div>
         </div>

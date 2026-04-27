@@ -60,6 +60,12 @@ const router = createRouter({
       meta: {hideNavBar: true}
     },
     {
+      path: '/pet-profile',
+      name: 'petProfile',
+      component: () => import('../views/PetProfile.vue'),
+      meta: {requiresAuth: true}
+    },
+    {
       path: '/personal',
       name: 'personal',
       // component: Personal,
