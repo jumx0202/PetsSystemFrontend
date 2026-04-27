@@ -7,6 +7,7 @@ import PostLost from '../views/PostLost.vue'
 import Forum from '../views/Forum.vue'
 import Personal from '../views/Personal.vue'
 import AiRecognize from '../views/AiRecognize.vue'
+import AIChat from '../views/AIChat.vue';
 // @ts-ignore
 import TestView from '../views/TestView.vue'
 
@@ -76,6 +77,12 @@ const router = createRouter({
       component: () => import('../views/Personal.vue'),
        // 隐藏菜单栏
       meta: {hideNavBar: true}
+    },
+    {
+      path: '/aichat',
+      name: 'aichat',
+      component: AIChat,
+      meta: { hideNavBar: true }
     }
   ],
 })

@@ -236,6 +236,10 @@
       </button>
     </div>
 
+    <button class="ai-chat-ball" @click="goToAIChat" title="AI聊天">
+      AI
+    </button>
+
     <!-- 联系方式弹窗 -->
     <div v-if="showContactModal" class="modal-overlay" @click="closeContactModal">
       <div class="modal-content" @click.stop>
@@ -554,6 +558,10 @@ const goToPublish = (type: string) => {
       router.push('/PostLost')
       break
   }
+}
+
+const goToAIChat = () => {
+  router.push('/aichat')
 }
 
 // ============ 原有方法 ============
@@ -1641,6 +1649,29 @@ function resetFilters() {
   font-weight: 500;
 }
 
+.ai-chat-ball {
+  position: fixed;
+  right: 32px;
+  bottom: 108px;
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00a8e8 0%, #4facfe 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 168, 232, 0.35);
+  z-index: 998;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ai-chat-ball:hover {
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 8px 22px rgba(0, 168, 232, 0.45);
+}
+
 /* 响应式 */
 @media (max-width: 768px) {
   .pet-cards-container {
@@ -1670,6 +1701,14 @@ function resetFilters() {
   
   .fab-item {
     padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .ai-chat-ball {
+    right: 22px;
+    bottom: 84px;
+    width: 46px;
+    height: 46px;
     font-size: 13px;
   }
 }
