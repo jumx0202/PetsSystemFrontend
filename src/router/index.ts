@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { Message } from '../utils/message'
 import Home from '../views/Home.vue'
 import Adoption from '../views/Adoption.vue'
 import PostAdoption from '../views/PostAdoption.vue'
@@ -93,7 +94,8 @@ router.beforeEach((to, from, next) => {
 
   // 如果页面需要登录，但未登录，跳转到登录页
   if (to.meta.requiresAuth && !isLoggedIn) {
-    next('/')
+    Message.warning('请先登录后再访问此页面')
+    next(from.path !== '/' ? from.path : '/')
     return
   }
 

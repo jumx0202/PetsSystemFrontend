@@ -136,6 +136,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Message } from '../utils/message'
 // @ts-ignore
 import request from '../api/request.js'
 
@@ -240,7 +241,7 @@ const closeForm = () => {
 
 const submitForm = async () => {
   if (!form.value.petName) {
-    alert('宠物名字不能为空')
+    Message.warning('宠物名字不能为空')
     return
   }
   
@@ -255,15 +256,15 @@ const submitForm = async () => {
     }
     
     if (res.code === 200) {
-      alert(isEdit.value ? '修改成功' : '添加成功')
+      Message.success(isEdit.value ? '修改成功' : '添加成功')
       closeForm()
       await fetchPets()
     } else {
-      alert(res.message || '操作失败')
+      Message.error(res.message || '操作失败')
     }
   } catch (err) {
     console.error('保存宠物异常', err)
-    alert('保存异常，请检查网络')
+    Message.error('保存异常，请检查网络')
   } finally {
     submitting.value = false
   }
@@ -275,14 +276,14 @@ const deletePet = async (pet: any) => {
   try {
     const res = await request.delete(`/api/pet/${pet.id}`)
     if (res.code === 200) {
-      alert('删除成功')
+      Message.success('删除成功')
       await fetchPets()
     } else {
-      alert(res.message || '删除失败')
+      Message.error(res.message || '删除失败')
     }
   } catch (err) {
     console.error('删除宠物异常', err)
-    alert('删除异常，请检查网络')
+    Message.error('删除异常，请检查网络')
   }
 }
 

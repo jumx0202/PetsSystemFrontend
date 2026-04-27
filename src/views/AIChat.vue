@@ -46,7 +46,8 @@
               </span>
             </template>
             <template v-else>
-              {{ msg.content }}
+              <div v-if="msg.role === 'assistant'" class="markdown-body" v-html="renderMarkdown(msg.content)"></div>
+              <div v-else class="markdown-body user-message-content">{{ msg.content }}</div>
             </template>
           </div>
         </div>
@@ -70,8 +71,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-// @ts-ignore
-import request from '../api/request.js'
+import { marked } from 'marked'
+import { Message } from '../utils/message'
 
 type MessageRole = 'user' | 'assistant'
 
@@ -128,8 +129,24 @@ const loadSessions = () => {
       activeSessionId.value = first.id
       return
     }
-    sessions.value = parsed
-    activeSessionId.value = parsed[0]!.id
+    
+    // 修复刷新后陷入"正在生成回答..."的问题
+    sessions.value = parsed.map(session => {
+      if (session.messages) {
+        session.messages = session.messages.map(msg => {
+          if (msg.isLoading) {
+            msg.isLoading = false
+            if (!msg.content || !msg.content.trim()) {
+              msg.content = '*(对话已中断)*'
+            }
+          }
+          return msg
+        })
+      }
+      return session
+    })
+    
+    activeSessionId.value = sessions.value[0]!.id
   } catch {
     const first = createEmptySession()
     sessions.value = [first]
@@ -217,20 +234,15 @@ const shouldAutoScroll = ref(true)
 const AUTO_SCROLL_THRESHOLD_PX = 80
 const TYPING_INTERVAL_MS = 24
 
-const resolveAssistantContent = (res: any): string => {
-  if (!res) return ''
-  const payload = res.data ?? res
-
-  if (typeof payload === 'string') return payload.trim()
-  if (typeof payload?.content === 'string') return payload.content.trim()
-  if (typeof payload?.reply === 'string') return payload.reply.trim()
-  if (typeof payload?.message === 'string') return payload.message.trim()
-  if (typeof payload?.answer === 'string') return payload.answer.trim()
-
-  const choiceContent = payload?.choices?.[0]?.message?.content
-  if (typeof choiceContent === 'string') return choiceContent.trim()
-
-  return ''
+const renderMarkdown = (content: string) => {
+  if (!content) return ''
+  try {
+    // 把连续超过2个以上的换行符替换为2个，防止过大的空白段落
+    const cleaned = content.replace(/\n{3,}/g, '\n\n')
+    return marked.parse(cleaned)
+  } catch (e) {
+    return content
+  }
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -338,35 +350,116 @@ const sendMessage = async () => {
   }))
 
   try {
-    const res: any = await request.post('/api/ai/chat', {
-      messages: history,
-      sessionId: session.id
-    }, {
-      timeout: 60000,
+    const tokenStr = localStorage.getItem('token') || ''
+    const response = await fetch('http://localhost:8080/api/ai/stream-chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${tokenStr}`
+      },
+      body: JSON.stringify({
+        messages: history,
+        sessionId: session.id
+      }),
       signal: controller.signal
     })
-    const content = resolveAssistantContent(res)
-    await animateAssistantReply(assistantMsg, content, token)
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    assistantMsg.isLoading = false
+    const reader = response.body?.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    
+    // 平滑输出队列
+    let animationQueue = ''
+    let isAnimating = false
+    const processQueue = async () => {
+      while (animationQueue.length > 0 && token === generationToken.value) {
+        // 动态调整速度：队列越长，吐字越快
+        const charsToTake = animationQueue.length > 50 ? 3 : (animationQueue.length > 20 ? 2 : 1)
+        const chunk = animationQueue.substring(0, charsToTake)
+        animationQueue = animationQueue.substring(charsToTake)
+        
+        assistantMsg.content += chunk
+        await scrollToBottom()
+        
+        if (charsToTake === 1) {
+          await sleep(15) // 速度调整
+        } else {
+          await sleep(10)
+        }
+      }
+      isAnimating = false
+    }
+
+    if (reader) {
+      while (true) {
+        if (token !== generationToken.value) break
+
+        const { value, done } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() || ''
+        
+        for (const part of parts) {
+          if (part.startsWith('data:')) {
+            const dataStr = part.substring(5).trim()
+            if (dataStr === '[DONE]') {
+               break
+            }
+            try {
+              const dataObj = JSON.parse(dataStr)
+              if (dataObj.delta) {
+                 animationQueue += dataObj.delta
+                 if (!isAnimating) {
+                   isAnimating = true
+                   void processQueue()
+                 }
+              } else if (dataObj.error) {
+                 animationQueue += '\n\n[错误] ' + dataObj.error
+                 if (!isAnimating) {
+                   isAnimating = true
+                   void processQueue()
+                 }
+              }
+            } catch (e) {
+              if (dataStr.startsWith('[ERROR]')) {
+                 assistantMsg.content += '\n\n' + dataStr
+              }
+            }
+          } else if (part.startsWith('event: error')) {
+            const dataLine = part.split('\n').find(l => l.startsWith('data:'))
+            if (dataLine) {
+               let errData = dataLine.substring(5).trim()
+               try {
+                  const dataObj = JSON.parse(errData)
+                  if(dataObj.error) errData = dataObj.error
+               } catch(ex){}
+               assistantMsg.content += '\n\n[系统提示] ' + errData
+            }
+          }
+        }
+      }
+      
+      // 等待队列动画播放完毕
+      while (isAnimating && token === generationToken.value) {
+        await sleep(50)
+      }
+    }
   } catch (error: any) {
     if (isRequestCanceled(error) || token !== generationToken.value) {
       return
     }
     console.error('AI 对话请求失败', error)
-    const backendMessage = error?.response?.data?.message
-    const isTimeout = error?.code === 'ECONNABORTED'
-    const isNetwork = error?.message === 'Network Error'
-    const fallbackMessage = isTimeout
-        ? 'AI 请求超时，请稍后重试（可检查后端或模型平台响应速度）。'
-        : isNetwork
-            ? '无法连接后端 AI 接口，请确认后端服务已启动且端口为 8080。'
-            : (error?.message || 'AI 服务暂时不可用，请检查后端模型接口是否已启动。')
-    await animateAssistantReply(
-        assistantMsg,
-        typeof backendMessage === 'string' && backendMessage.trim()
-            ? backendMessage
-            : fallbackMessage,
-        token
-    )
+    assistantMsg.isLoading = false
+    assistantMsg.content += '\n\n[系统提示] AI 服务请求失败，可能是网络问题或超时。'
+    await scrollToBottom()
   } finally {
     if (activeAbortController.value === controller) {
       activeAbortController.value = null
@@ -537,7 +630,6 @@ watch(activeSessionId, async () => {
   border-radius: 12px;
   padding: 10px 12px;
   line-height: 1.5;
-  white-space: pre-wrap;
   text-align: left;
 }
 .message-row.user .message-bubble {
@@ -602,5 +694,132 @@ watch(activeSessionId, async () => {
 .input-area button:disabled {
   background: #b3d4ff;
   cursor: not-allowed;
+}
+
+/* ========== Markdown 美化样式 ========== */
+.markdown-body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+.user-message-content {
+  white-space: pre-wrap;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-body :deep(h1) { font-size: 1.4em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+.markdown-body :deep(h2) { font-size: 1.2em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+.markdown-body :deep(h3) { font-size: 1.1em; }
+.markdown-body :deep(h4) { font-size: 1em; }
+
+.markdown-body :deep(p) {
+  margin-top: 0;
+  margin-bottom: 0.5em;
+}
+
+/* 隐藏空的段落标签，防止额外撑开间距 */
+.markdown-body :deep(p:empty) {
+  display: none;
+}
+
+.markdown-body :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  padding-left: 1.2em;
+  margin-top: 0.2em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body :deep(li) {
+  margin-bottom: 0.2em;
+}
+
+/* 消除列表项内 p 标签导致的双重间距 */
+.markdown-body :deep(li > p) {
+  margin-top: 0;
+  margin-bottom: 0;
+  display: inline;
+}
+
+.markdown-body :deep(code) {
+  background-color: rgba(27,31,35,0.05);
+  border-radius: 3px;
+  padding: 0.2em 0.4em;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 85%;
+}
+
+.markdown-body :deep(pre) {
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  margin-bottom: 0.8em;
+}
+
+.markdown-body :deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-body :deep(blockquote) {
+  padding: 0 1em;
+  color: #6a737d;
+  border-left: 0.25em solid #dfe2e5;
+  margin: 0 0 0.8em 0;
+}
+
+.markdown-body :deep(table) {
+  display: block;
+  width: 100%;
+  overflow: auto;
+  margin-bottom: 1em;
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+
+.markdown-body :deep(table th),
+.markdown-body :deep(table td) {
+  padding: 6px 13px;
+  border: 1px solid #dfe2e5;
+}
+
+.markdown-body :deep(table tr) {
+  background-color: #fff;
+  border-top: 1px solid #c6cbd1;
+}
+
+.markdown-body :deep(table tr:nth-child(2n)) {
+  background-color: #f6f8fa;
+}
+
+/* 消息气泡阴影与圆角增强 */
+.message-bubble {
+  max-width: 70%;
+  border-radius: 16px;
+  padding: 12px 16px;
+  line-height: 1.6;
+  text-align: left;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.message-row.user .message-bubble {
+  border-bottom-right-radius: 4px;
+}
+.message-row.assistant .message-bubble {
+  border-bottom-left-radius: 4px;
 }
 </style>
