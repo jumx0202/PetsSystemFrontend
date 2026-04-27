@@ -64,6 +64,12 @@ const router = createRouter({
       meta: {requiresAuth: true}
     },
     {
+      path: '/ai-model-info',
+      name: 'aiModelInfo',
+      component: () => import('../views/AiModelInfo.vue'),
+      meta: {hideNavBar: true}
+    },
+    {
       path: '/personal',
       name: 'personal',
       // component: Personal,

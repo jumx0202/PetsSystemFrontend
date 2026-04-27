@@ -9,6 +9,11 @@
       <p class="title-detail">
         上传一张宠物照片，AI 将自动识别品种。支持 <strong>12 种猫</strong> 和 <strong>25 种狗</strong>，共 37 个品种，准确率 96.1%。
       </p>
+      <div class="model-link-wrapper">
+        <router-link to="/ai-model-info" class="model-link">
+          深入了解 AI 模型架构及技术细节 →
+        </router-link>
+      </div>
     </div>
 
     <!-- 主内容区 -->
@@ -224,6 +229,25 @@ const reset = () => {
   line-height: 1.6;
   max-width: 600px;
   margin: 0 auto;
+}
+
+.model-link-wrapper {
+  margin-top: 12px;
+}
+
+.model-link {
+  font-size: 14px;
+  color: #00a8e8;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.model-link:hover {
+  background: #f0f9ff;
+  color: #0090c9;
 }
 
 /* ========== 内容区 ========== */
