@@ -55,9 +55,7 @@ const router = createRouter({
     {
       path: '/forum',
       name: 'forum',
-      component: Forum,
-      // 隐藏菜单栏
-      meta: {hideNavBar: true}
+      component: Forum
     },
     {
       path: '/pet-profile',

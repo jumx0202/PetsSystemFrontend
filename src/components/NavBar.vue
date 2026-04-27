@@ -4,7 +4,7 @@
       <div class="nav-title">宠物管理系统</div>
       <div class="nav-links">
         <router-link to="/" class="nav-link">首页</router-link>
-        <router-link to="/adoption" class="nav-link">Adoption/Succour</router-link>
+        <router-link to="/adoption" class="nav-link">领养/救助</router-link>
         <router-link to="/lost" class="nav-link">寻宠</router-link>
         <router-link to="/forum" class="nav-link">论坛</router-link>
         <router-link to="/ai-recognize" class="nav-link">AI识别</router-link>

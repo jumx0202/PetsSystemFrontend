@@ -3,12 +3,12 @@
     <!-- 主标题区域 -->
     <div class="main">
       <h1 class="main-title">
-        Every Pet Deserves a Loving Home.<br>
-        <span class="highlight">Adopt</span> a Pet Today
+        每个宠物都值得一个充满爱的家。<br>
+        今天就<span class="highlight">领养</span>一只宠物吧
       </h1>
       <p class="title-detail">
-        Browse our available animals and learn more about the adoption process. Together, we can <span class="bold">rescue,</span> 
-        <span class="bold">rehabilitate, and rehome pets in need.</span> Thank you for supporting our mission to bring joy to families through pet adoption.
+        浏览我们可领养的动物，了解更多领养流程。只要我们携起手来，就能<span class="bold">拯救、</span> 
+        <span class="bold">康复并为有需要的宠物重新安家。</span>感谢您支持我们的使命，通过宠物领养为家庭带来欢乐。
       </p>
     </div>
 

@@ -3,11 +3,11 @@
     <!-- 主标题区域 -->
     <div class="main">
       <h1 class="main-title">
-        Urgent Pet <span class="highlight">Search</span>. <br>
-        Help them get home 
+        紧急宠物<span class="highlight">寻回</span> <br>
+        帮助它们回家 
       </h1>
       <p class="title-detail">
-        Every repost is a hope, every moment of attention is a source of warmth.
+        每一次转发都是一份希望，每一份关注都是一丝温暖。
       </p>
     </div>
 
