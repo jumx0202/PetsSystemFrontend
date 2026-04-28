@@ -84,6 +84,12 @@ const router = createRouter({
       name: 'aichat',
       component: AIChat,
       meta: { hideNavBar: true }
+    },
+    {
+      path: '/pet-location',
+      name: 'petLocation',
+      component: () => import('../views/PetLocation.vue'),
+      meta: { requiresAuth: true }
     }
   ],
 })
