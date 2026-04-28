@@ -27,7 +27,7 @@
       <ul v-else class="item-list">
         <li v-for="pet in pets" :key="pet.id" class="item-row pet-card">
           <div class="item-main">
-            <img :src="pet.avatar || defaultAvatar" alt="宠物头像" class="item-cover" @error="handleImageError" />
+            <img :src="getPetAvatar(pet)" alt="宠物头像" class="item-cover" @error="handleImageError($event, pet)" />
             <div class="item-meta">
               <div class="pet-header">
                 <span class="item-name">{{ pet.petName }}</span>
@@ -141,7 +141,26 @@ import { Message } from '../utils/message'
 import request from '../api/request.js'
 
 const router = useRouter()
-const defaultAvatar = 'https://api.dicebear.com/7.x/bottts/svg?seed=pet'
+const getDefaultPetAvatar = (type: number | null | undefined) => {
+  const colors = type === 1
+    ? { bg: '#fff7ed', accent: '#f97316', dark: '#9a3412' }
+    : type === 0
+      ? { bg: '#eff6ff', accent: '#2563eb', dark: '#1e3a8a' }
+      : { bg: '#f0fdf4', accent: '#16a34a', dark: '#14532d' }
+  const label = type === 1 ? 'CAT' : type === 0 ? 'DOG' : 'PET'
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+      <rect width="96" height="96" rx="48" fill="${colors.bg}"/>
+      <circle cx="31" cy="34" r="9" fill="${colors.accent}"/>
+      <circle cx="48" cy="27" r="10" fill="${colors.accent}"/>
+      <circle cx="65" cy="34" r="9" fill="${colors.accent}"/>
+      <circle cx="37" cy="54" r="9" fill="${colors.accent}"/>
+      <circle cx="59" cy="54" r="9" fill="${colors.accent}"/>
+      <path d="M27 67c4-13 13-20 21-20s17 7 21 20c2 7-3 13-10 11-5-1-7-3-11-3s-7 2-11 3c-7 2-12-4-10-11z" fill="${colors.dark}"/>
+      <text x="48" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="${colors.dark}">${label}</text>
+    </svg>`
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+}
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -166,9 +185,11 @@ const form = ref({
 
 const goBack = () => router.back()
 
-const handleImageError = (e: Event) => {
+const getPetAvatar = (pet: any) => pet.avatar || getDefaultPetAvatar(pet.petType)
+
+const handleImageError = (e: Event, pet: any) => {
   const target = e.target as HTMLImageElement
-  target.src = defaultAvatar
+  target.src = getDefaultPetAvatar(pet.petType)
 }
 
 const getPetTypeDesc = (type: number) => {

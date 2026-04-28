@@ -15,7 +15,7 @@
           :class="{ active: selectedPetId === pet.id }"
           @click="selectPet(pet.id)"
         >
-          <img :src="pet.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + pet.id" alt="宠物头像" class="pet-avatar" />
+          <img :src="getPetAvatar(pet)" alt="宠物头像" class="pet-avatar" @error="handlePetAvatarError($event, pet)" />
           <div class="pet-info">
             <h3 class="pet-name">{{ pet.petName }}</h3>
             <div class="status-indicator" :class="{ online: isPetOnline(pet.id) }">
@@ -57,10 +57,6 @@
           <span class="label">当前速度</span>
           <span class="value">{{ latestLocation.speed ? latestLocation.speed.toFixed(1) : '0.0' }} km/h</span>
         </div>
-        <div class="overlay-item">
-          <span class="label">数据来源</span>
-          <span class="value">{{ latestLocation.source === 'MOCK' ? '模拟信号' : 'GPS设备' }}</span>
-        </div>
       </div>
       
       <div class="empty-map" v-if="!selectedPetId">
@@ -98,6 +94,34 @@ let currentSubscription: any = null
 
 const API_BASE_URL = 'http://localhost:8080/api'
 const WS_URL = 'http://localhost:8080/ws'
+
+const getDefaultPetAvatar = (type: number | null | undefined) => {
+  const colors = type === 1
+    ? { bg: '#fff7ed', accent: '#f97316', dark: '#9a3412' }
+    : type === 0
+      ? { bg: '#eff6ff', accent: '#2563eb', dark: '#1e3a8a' }
+      : { bg: '#f0fdf4', accent: '#16a34a', dark: '#14532d' }
+  const label = type === 1 ? 'CAT' : type === 0 ? 'DOG' : 'PET'
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+      <rect width="96" height="96" rx="48" fill="${colors.bg}"/>
+      <circle cx="31" cy="34" r="9" fill="${colors.accent}"/>
+      <circle cx="48" cy="27" r="10" fill="${colors.accent}"/>
+      <circle cx="65" cy="34" r="9" fill="${colors.accent}"/>
+      <circle cx="37" cy="54" r="9" fill="${colors.accent}"/>
+      <circle cx="59" cy="54" r="9" fill="${colors.accent}"/>
+      <path d="M27 67c4-13 13-20 21-20s17 7 21 20c2 7-3 13-10 11-5-1-7-3-11-3s-7 2-11 3c-7 2-12-4-10-11z" fill="${colors.dark}"/>
+      <text x="48" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="${colors.dark}">${label}</text>
+    </svg>`
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+}
+
+const getPetAvatar = (pet: any) => pet.avatar || getDefaultPetAvatar(pet.petType)
+
+const handlePetAvatarError = (e: Event, pet: any) => {
+  const target = e.target as HTMLImageElement
+  target.src = getDefaultPetAvatar(pet.petType)
+}
 
 // ============ 初始化 ============
 onMounted(async () => {
@@ -156,9 +180,11 @@ const fetchLatestLocation = async (id: number) => {
     const result = await response.json()
     if (result.code === 200 && result.data) {
       latestLocation.value = result.data
+      isOnlineMap.value[id] = isRecentlyUpdated(result.data.recordedAt)
       updateMapMarker(result.data.latitude, result.data.longitude, true)
     } else {
       latestLocation.value = null
+      isOnlineMap.value[id] = false
       if (marker) {
         map?.removeLayer(marker)
         marker = null
@@ -311,6 +337,11 @@ const isPetOnline = (petId: number) => {
   return !!isOnlineMap.value[petId]
 }
 
+const isRecentlyUpdated = (isoString: string) => {
+  if (!isoString) return false
+  return Date.now() - new Date(isoString).getTime() <= 30000
+}
+
 const formatTime = (isoString: string) => {
   if (!isoString) return '-'
   const date = new Date(isoString)
@@ -338,6 +369,7 @@ const formatTime = (isoString: string) => {
 .sidebar-header {
   padding: 24px;
   border-bottom: 1px solid #f1f5f9;
+  text-align: left;
 }
 
 .sidebar-header h2 {
@@ -345,12 +377,14 @@ const formatTime = (isoString: string) => {
   font-weight: 700;
   color: #0f172a;
   margin: 0 0 4px 0;
+  text-align: left;
 }
 
 .sidebar-header .subtitle {
   color: #64748b;
   margin: 0;
   font-size: 0.9rem;
+  text-align: left;
 }
 
 .pet-list {
@@ -393,6 +427,11 @@ const formatTime = (isoString: string) => {
 
 .pet-info {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .pet-name {
@@ -400,6 +439,8 @@ const formatTime = (isoString: string) => {
   font-weight: 600;
   color: #1e293b;
   margin: 0 0 6px 0;
+  width: 100%;
+  text-align: left;
 }
 
 .status-indicator {

@@ -96,7 +96,7 @@
               :class="{ first: index === 0 }"
             >
               <div class="bar-label-row">
-                <span class="bar-rank" :class="{ 'bar-rank-first': index === 0 }">{{ index + 1 }}</span>
+                <span class="bar-rank" :class="{ 'bar-rank-first': index === 0 }">{{ Number(index) + 1 }}</span>
                 <span class="bar-name">{{ item.breed_cn }}</span>
                 <span class="bar-en">{{ item.breed }}</span>
                 <span class="bar-pct">{{ (item.confidence * 100).toFixed(1) }}%</span>
