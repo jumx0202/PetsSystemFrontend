@@ -7,34 +7,34 @@
         今天就<span class="highlight">领养</span>一只宠物吧
       </h1>
       <p class="title-detail">
-        浏览我们可领养的动物，了解更多领养流程。只要我们携起手来，就能<span class="bold">拯救、</span> 
+        浏览我们可领养的动物，了解更多领养流程。只要我们携起手来，就能<span class="bold">拯救、</span>
         <span class="bold">康复并为有需要的宠物重新安家。</span>感谢您支持我们的使命，通过宠物领养为家庭带来欢乐。
       </p>
     </div>
 
     <!-- 筛选栏 + 搜索按钮 - 可固定顶部 -->
-    <div 
-      class="filter-search-bar" 
-      :class="{ 'sticky': isSticky }"
-      ref="filterBarRef"
+    <div
+        class="filter-search-bar"
+        :class="{ 'sticky': isSticky }"
+        ref="filterBarRef"
     >
       <div class="filter-item city-item">
         <label>城市</label>
         <div class="select-wrapper city-wrapper" :style="{ width: selectBoxWidth + 'px' }">
           <input
-            ref="cityInputRef"
-            v-model="selectedCity"
-            placeholder="请输入城市名称"
-            class="combo-input city-input"
-            @focus="showCityDropdown = true"
-            @blur="handleBlur"
+              ref="cityInputRef"
+              v-model="selectedCity"
+              placeholder="请输入城市名称"
+              class="combo-input city-input"
+              @focus="showCityDropdown = true"
+              @blur="handleBlur"
           />
           <ul v-show="showCityDropdown" class="city-dropdown">
-            <li 
-              v-for="city in availableCities" 
-              :key="city"
-              @mousedown.prevent="selectCity(city)"
-              class="dropdown-item"
+            <li
+                v-for="city in availableCities"
+                :key="city"
+                @mousedown.prevent="selectCity(city)"
+                class="dropdown-item"
             >
               {{ city }}
             </li>
@@ -47,24 +47,24 @@
           </span>
         </div>
       </div>
-      
+
       <div class="filter-item">
         <label>性别</label>
         <div class="select-wrapper custom-select-wrapper" :style="{ width: selectBoxWidth + 'px' }">
           <input
-            v-model="selectedGender"
-            placeholder="请选择性别"
-            class="combo-input gender-input"
-            readonly
-            @focus="showGenderDropdown = true"
-            @blur="handleGenderBlur"
+              v-model="selectedGender"
+              placeholder="请选择性别"
+              class="combo-input gender-input"
+              readonly
+              @focus="showGenderDropdown = true"
+              @blur="handleGenderBlur"
           />
           <ul v-show="showGenderDropdown" class="custom-dropdown">
-            <li 
-              v-for="gender in genders" 
-              :key="gender"
-              @mousedown.prevent="selectGender(gender)"
-              class="dropdown-item"
+            <li
+                v-for="gender in genders"
+                :key="gender"
+                @mousedown.prevent="selectGender(gender)"
+                class="dropdown-item"
             >
               {{ gender }}
             </li>
@@ -72,24 +72,24 @@
           <span class="custom-arrow"></span>
         </div>
       </div>
-      
+
       <div class="filter-item">
         <label>种类</label>
         <div class="select-wrapper custom-select-wrapper" :style="{ width: selectBoxWidth + 'px' }">
           <input
-            v-model="selectedType"
-            placeholder="请选择种类"
-            class="combo-input type-input"
-            readonly
-            @focus="showTypeDropdown = true"
-            @blur="handleTypeBlur"
+              v-model="selectedType"
+              placeholder="请选择种类"
+              class="combo-input type-input"
+              readonly
+              @focus="showTypeDropdown = true"
+              @blur="handleTypeBlur"
           />
           <ul v-show="showTypeDropdown" class="custom-dropdown">
-            <li 
-              v-for="type in types" 
-              :key="type"
-              @mousedown.prevent="selectType(type)"
-              class="dropdown-item"
+            <li
+                v-for="type in types"
+                :key="type"
+                @mousedown.prevent="selectType(type)"
+                class="dropdown-item"
             >
               {{ type }}
             </li>
@@ -97,7 +97,7 @@
           <span class="custom-arrow"></span>
         </div>
       </div>
-      
+
       <div class="filter-item search-item">
         <button class="search-btn" @click="onSearch">搜索</button>
         <button class="reset-btn" @click="resetFilters">重置</button>
@@ -106,36 +106,36 @@
 
     <!-- 宠物卡片列表 -->
     <div class="pet-cards-container">
-      <div 
-        v-for="pet in filteredPets" 
-        :key="pet.id" 
-        class="pet-card-wrapper"
+      <div
+          v-for="pet in filteredPets"
+          :key="pet.id"
+          class="pet-card-wrapper"
       >
-        <div 
-          class="pet-card-flipper"
-          :class="{ 'flipped': flippedCards[pet.id] }"
+        <div
+            class="pet-card-flipper"
+            :class="{ 'flipped': flippedCards[pet.id] }"
         >
           <!-- 卡片正面 -->
           <div class="pet-card-front">
             <div class="pet-image-wrapper">
               <img :src="pet.image" class="pet-image" />
             </div>
-            
+
             <div class="pet-info">
               <div class="info-row user-favorite-row">
                 <div class="poster-user">
                   <img
-                    :src="pet.posterAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=poster'"
-                    class="poster-avatar"
-                    alt="发帖用户头像"
+                      :src="pet.posterAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=poster'"
+                      class="poster-avatar"
+                      alt="发帖用户头像"
                   />
                 </div>
                 <div class="favorite-count">
                   <button
-                    class="favorite-btn"
-                    :class="{ favorited: !!pet.favorited }"
-                    @click.stop="toggleFavorite(pet)"
-                    title="收藏"
+                      class="favorite-btn"
+                      :class="{ favorited: !!pet.favorited }"
+                      @click.stop="toggleFavorite(pet)"
+                      title="收藏"
                   >
                     ★
                   </button>
@@ -154,16 +154,16 @@
                   <span class="breed-label">{{ pet.breed }}</span>
                 </div>
               </div>
-              
+
               <!-- 可点击翻转的 description -->
-              <div 
-                class="info-row description-row" 
-                v-if="pet.description"
-                @click="flipCard(pet.id)"
+              <div
+                  class="info-row description-row"
+                  v-if="pet.description"
+                  @click="flipCard(pet.id)"
               >
                 <span class="description-text">{{ pet.description }}</span>
               </div>
-              
+
               <div class="info-row location-contact-row">
                 <div class="location">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
@@ -180,7 +180,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- 卡片背面 - 只有图片和完整description -->
           <div class="pet-card-back" @click="flipCard(pet.id)">
             <div class="pet-image-wrapper">
@@ -206,21 +206,21 @@
           <span class="fab-text">寻宠启事</span>
         </button>
       </div>
-      
-      <button 
-        class="fab-btn" 
-        :class="{ 'active': showFabMenu }"
-        @click="toggleFabMenu"
-        title="发布"
+
+      <button
+          class="fab-btn"
+          :class="{ 'active': showFabMenu }"
+          @click="toggleFabMenu"
+          title="发布"
       >
-        <svg 
-          viewBox="0 0 24 24" 
-          width="24" 
-          height="24" 
-          fill="none" 
-          stroke="currentColor" 
-          stroke-width="2"
-          :class="{ 'rotate': showFabMenu }"
+        <svg
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            :class="{ 'rotate': showFabMenu }"
         >
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -247,7 +247,7 @@
             <div class="contact-label">联系人</div>
             <div class="contact-value">{{ selectedPet?.contactName }}</div>
           </div>
-          
+
           <div class="contact-item">
             <div class="contact-label">联系电话</div>
             <div class="contact-value copyable" @click="copyToClipboard(selectedPet?.contactPhone, '电话号码')">
@@ -260,7 +260,7 @@
               </button>
             </div>
           </div>
-          
+
           <div class="contact-item" v-if="selectedPet?.contactWechat">
             <div class="contact-label">微信号</div>
             <div class="contact-value copyable wechat" @click="copyToClipboard(selectedPet?.contactWechat, '微信号')">
@@ -280,10 +280,20 @@
       </div>
     </div>
 
+    <!-- 未登录提示弹窗 -->
+    <div v-if="showLoginTip" class="login-tip-overlay" @click="closeLoginTip">
+      <div class="login-tip-card" @click.stop>
+        <div class="login-tip-icon">🔐</div>
+        <h3 class="login-tip-title">请先登录</h3>
+        <p class="login-tip-message">您需要登录后才能使用此功能，请先登录或注册。</p>
+        <button class="login-tip-btn" @click="closeLoginTip">知道了</button>
+      </div>
+    </div>
+
   </div>
 </template>
 
-<script setup lang="ts"> 
+<script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 // @ts-ignore
@@ -293,6 +303,17 @@ import { upsertFavorite, removeFavorite, isFavorite, type FavoriteKind } from '.
 const router = useRouter()
 
 const FAVORITE_KIND: FavoriteKind = 'adoption'
+
+// ============ 未登录提示弹窗 ============
+const showLoginTip = ref(false)
+
+const showLoginRequired = () => {
+  showLoginTip.value = true
+}
+
+const closeLoginTip = () => {
+  showLoginTip.value = false
+}
 
 // ============ 筛选相关 ============
 const selectedCity = ref('')
@@ -370,7 +391,7 @@ interface Pet {
   gender: string
   breed: string
   description?: string
-  city: string      
+  city: string
   district: string
   contactName: string
   contactPhone: string
@@ -530,12 +551,10 @@ const selectedPet = ref<Pet | null>(null)
 
 const openContactModal = (pet: Pet) => {
   const token = localStorage.getItem('token')
-  const userInfo = localStorage.getItem('userInfo')
-  if (!token || !userInfo) {
-    alert('请先登录或注册后再查看联系方式')
+  if (!token) {
+    showLoginRequired()
     return
   }
-
   selectedPet.value = pet
   showContactModal.value = true
   document.body.style.overflow = 'hidden'
@@ -548,12 +567,17 @@ const closeContactModal = () => {
 }
 
 const toggleFavorite = (pet: Pet) => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    showLoginRequired()
+    return
+  }
   const currentCount = pet.favoriteCount ?? 0
   const nextFavorited = !pet.favorited
   pet.favorited = nextFavorited
   pet.favoriteCount = nextFavorited
-    ? currentCount + 1
-    : Math.max(0, currentCount - 1)
+      ? currentCount + 1
+      : Math.max(0, currentCount - 1)
   if (nextFavorited) {
     upsertFavorite({
       kind: FAVORITE_KIND,
@@ -592,10 +616,10 @@ const filteredPets = computed(() => {
   return pets.value.filter(pet => {
     const matchCity = !activeCity.value || pet.city === activeCity.value
     const matchGender = !activeGender.value || pet.gender === activeGender.value
-    const matchType = !activeType.value || 
-      (activeType.value === '狗' && !pet.breed.includes('猫')) ||
-      (activeType.value === '猫' && pet.breed.includes('猫')) ||
-      (activeType.value === '其他' && pet.breed.includes('其他'))
+    const matchType = !activeType.value ||
+        (activeType.value === '狗' && !pet.breed.includes('猫')) ||
+        (activeType.value === '猫' && pet.breed.includes('猫')) ||
+        (activeType.value === '其他' && pet.breed.includes('其他'))
     return matchCity && matchGender && matchType
   })
 })
@@ -616,6 +640,12 @@ const getGenderClass = (gender: string) => {
 // =========== 跳转到发布领养帖子页面 ============
 const goToPublish = (type: string) => {
   showFabMenu.value = false
+  const token = localStorage.getItem('token')
+  const userInfo = localStorage.getItem('userInfo')
+  if (!token || !userInfo) {
+    showLoginRequired()
+    return
+  }
   switch(type) {
     case 'adoption':
       router.push('/PostAdoption')
@@ -627,6 +657,12 @@ const goToPublish = (type: string) => {
 }
 
 const goToAIChat = () => {
+  const token = localStorage.getItem('token')
+  const userInfo = localStorage.getItem('userInfo')
+  if (!token || !userInfo) {
+    showLoginRequired()
+    return
+  }
   router.push('/aichat')
 }
 
@@ -644,13 +680,13 @@ function getTextWidth(text: string, font: string): number {
 function calculateSelectBoxWidth() {
   const placeholders = ['请输入城市名称', '请选择性别', '请选择种类']
   const font = '14px sans-serif'
-  
+
   let maxTextWidth = 0
   placeholders.forEach(text => {
     const textWidth = getTextWidth(text, font)
     maxTextWidth = Math.max(maxTextWidth, textWidth)
   })
-  
+
   selectBoxWidth.value = Math.max(140, maxTextWidth + 16 + 32 + 20)
 }
 
@@ -1764,43 +1800,43 @@ function resetFilters() {
     gap: 16px;
     padding: 0 16px 32px;
   }
-  
+
   .pet-card-wrapper {
     height: 400px;
   }
-  
+
   .pet-image-wrapper {
     height: 200px;
   }
-  
+
   .filter-search-bar {
     flex-wrap: wrap;
     gap: 12px;
     padding: 12px;
   }
-  
+
   .filter-search-bar.sticky {
     padding: 8px 12px;
   }
-  
+
   .filter-item label {
     font-size: 12px;
   }
-  
+
   .main-title {
     font-size: 24px;
   }
-  
+
   .fab-wrapper {
     bottom: 20px;
     right: 20px;
   }
-  
+
   .fab-btn {
     width: 50px;
     height: 50px;
   }
-  
+
   .fab-item {
     padding: 10px 16px;
     font-size: 13px;
@@ -1813,5 +1849,71 @@ function resetFilters() {
     height: 46px;
     font-size: 13px;
   }
+}
+
+/* 未登录提示弹窗 - 橙黄色主题 */
+.login-tip-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  animation: fadeIn 0.2s ease;
+}
+
+.login-tip-card {
+  background: #fff8f0;
+  border-radius: 24px;
+  padding: 28px 24px;
+  max-width: 300px;
+  width: 85%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid #ffd89a;
+  animation: slideUp 0.3s ease;
+}
+
+.login-tip-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.login-tip-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e67e22;
+  margin: 0 0 8px 0;
+}
+
+.login-tip-message {
+  font-size: 14px;
+  color: #8b5a2b;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.login-tip-btn {
+  background: #f39c12;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 40px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+}
+
+.login-tip-btn:hover {
+  background: #e67e22;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
 }
 </style>

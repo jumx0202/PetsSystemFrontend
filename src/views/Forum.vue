@@ -11,9 +11,9 @@
       <div class="header-search">
         <div class="search-wrapper">
           <input
-            v-model="searchKeyword"
-            type="text"
-            placeholder="搜索帖子内容"
+              v-model="searchKeyword"
+              type="text"
+              placeholder="搜索帖子内容"
           />
           <span class="search-icon">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -32,11 +32,11 @@
           <p>还没有帖子，快来发布第一条吧！</p>
         </div>
 
-        <div 
-          v-for="post in filteredPosts" 
-          :key="post.id" 
-          class="post-card"
-          @click="openPostDetail(post)"
+        <div
+            v-for="post in filteredPosts"
+            :key="post.id"
+            class="post-card"
+            @click="openPostDetail(post)"
         >
           <div class="post-header">
             <div class="avatar">
@@ -52,12 +52,12 @@
           <div class="post-content">
             <p class="post-text">{{ post.content }}</p>
             <div v-if="post.images.length > 0" class="image-grid" :class="`grid-${Math.min(post.images.length, 3)}`">
-              <img 
-                v-for="(img, index) in post.images.slice(0, 9)" 
-                :key="index" 
-                :src="img" 
-                @click.stop="previewImage(img)"
-                alt="post image"
+              <img
+                  v-for="(img, index) in post.images.slice(0, 9)"
+                  :key="index"
+                  :src="img"
+                  @click.stop="previewImage(img)"
+                  alt="post image"
               />
             </div>
           </div>
@@ -67,10 +67,10 @@
               <span class="icon">💬</span>
               <span>{{ post.comments.length || '评论' }}</span>
             </button>
-            <button 
-              class="action-btn" 
-              :class="{ active: post.isCollected }"
-              @click.stop="toggleCollect(post)"
+            <button
+                class="action-btn"
+                :class="{ active: post.isCollected }"
+                @click.stop="toggleCollect(post)"
             >
               <span class="icon">{{ post.isCollected ? '⭐' : '☆' }}</span>
               <span>{{ post.isCollected ? '已收藏' : '收藏' }}</span>
@@ -94,14 +94,14 @@
     <div v-if="showPublishModal" class="modal-overlay" @click.self="showPublishModal = false">
       <div class="modal publish-modal">
         <h3>{{ isEditMode ? '编辑帖子' : '发布新帖子' }}</h3>
-        <textarea 
-          v-model="newPost.content" 
-          placeholder="分享你的想法..." 
-          rows="5"
-          maxlength="500"
+        <textarea
+            v-model="newPost.content"
+            placeholder="分享你的想法..."
+            rows="5"
+            maxlength="500"
         ></textarea>
         <div class="char-count">{{ newPost.content.length }}/500</div>
-        
+
         <div class="image-upload-area">
           <div v-for="(img, index) in newPost.images" :key="index" class="preview-item">
             <img :src="img" />
@@ -111,13 +111,13 @@
             <span>+</span>
             <span>添加图片</span>
           </button>
-          <input 
-            ref="fileInput" 
-            type="file" 
-            accept="image/*" 
-            multiple 
-            style="display: none" 
-            @change="handleImageUpload"
+          <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              multiple
+              style="display: none"
+              @change="handleImageUpload"
           />
         </div>
 
@@ -134,7 +134,7 @@
     <div v-if="showDetailModal" class="modal-overlay" @click.self="showDetailModal = false">
       <div class="modal detail-modal">
         <button class="close-btn" @click="showDetailModal = false">×</button>
-        
+
         <div class="detail-header">
           <div class="avatar">
             <img v-if="currentPost.authorAvatar" :src="currentPost.authorAvatar" alt="avatar" @error="() => (currentPost.authorAvatar = getDefaultAvatar(currentPost.author || 'user'))" />
@@ -149,20 +149,20 @@
         <div class="detail-content">
           <p>{{ currentPost.content }}</p>
           <div v-if="currentPost.images.length > 0" class="detail-images">
-            <img 
-              v-for="(img, index) in currentPost.images" 
-              :key="index" 
-              :src="img" 
-              @click="previewImage(img)"
+            <img
+                v-for="(img, index) in currentPost.images"
+                :key="index"
+                :src="img"
+                @click="previewImage(img)"
             />
           </div>
         </div>
 
         <div class="detail-actions">
-          <button 
-            class="action-btn" 
-            :class="{ active: currentPost.isCollected }"
-            @click="toggleCollect(currentPost)"
+          <button
+              class="action-btn"
+              :class="{ active: currentPost.isCollected }"
+              @click="toggleCollect(currentPost)"
           >
             <span>{{ currentPost.isCollected ? '⭐' : '☆' }}</span>
             <span>{{ currentPost.isCollected ? '已收藏' : '收藏' }}</span>
@@ -172,16 +172,16 @@
         <!-- 评论区 -->
         <div class="comments-section">
           <h4>评论 ({{ currentPost.comments.length }})</h4>
-          
+
           <div class="comment-input-area">
             <div v-if="replyingToComment" class="replying-tip">
               正在回复 @{{ replyingToComment.author }}
             </div>
             <div class="comment-input-row">
-              <input 
-                v-model="newComment" 
-                :placeholder="replyingToComment ? `回复 @${replyingToComment.author}` : '写下你的评论...'"
-                @keyup.enter="submitComment"
+              <input
+                  v-model="newComment"
+                  :placeholder="replyingToComment ? `回复 @${replyingToComment.author}` : '写下你的评论...'"
+                  @keyup.enter="submitComment"
               />
               <button @click="submitComment" :disabled="!newComment.trim()">发送</button>
               <button v-if="replyingToComment" class="cancel-reply-btn" @click="cancelReply">取消</button>
@@ -190,17 +190,17 @@
 
           <div class="comments-list">
             <div
-              v-for="comment in currentPost.comments"
-              :key="comment.id"
-              class="comment-item"
-              :class="{ reply: !!comment.parentId }"
+                v-for="comment in currentPost.comments"
+                :key="comment.id"
+                class="comment-item"
+                :class="{ reply: !!comment.parentId }"
             >
               <div class="comment-avatar">
                 <img
-                  v-if="comment.authorAvatar"
-                  :src="comment.authorAvatar"
-                  alt="comment avatar"
-                  @error="() => (comment.authorAvatar = getDefaultAvatar(comment.author || 'user'))"
+                    v-if="comment.authorAvatar"
+                    :src="comment.authorAvatar"
+                    alt="comment avatar"
+                    @error="() => (comment.authorAvatar = getDefaultAvatar(comment.author || 'user'))"
                 />
                 <span v-else>{{ comment.author[0] }}</span>
               </div>
@@ -216,9 +216,9 @@
                 <div class="comment-actions">
                   <button class="reply-btn" @click="startReply(comment)">回复</button>
                   <button
-                    v-if="canDeleteComment(comment)"
-                    class="delete-reply-btn"
-                    @click="deleteComment(comment)"
+                      v-if="canDeleteComment(comment)"
+                      class="delete-reply-btn"
+                      @click="deleteComment(comment)"
                   >
                     删除
                   </button>
@@ -234,6 +234,16 @@
     <div v-if="previewImageUrl" class="image-preview-overlay" @click.self="previewImageUrl = null">
       <img :src="previewImageUrl" class="preview-large" />
     </div>
+
+    <!-- 未登录提示弹窗 -->
+    <div v-if="showLoginTip" class="login-tip-overlay" @click="closeLoginTip">
+      <div class="login-tip-card" @click.stop>
+        <div class="login-tip-icon">🔐</div>
+        <h3 class="login-tip-title">请先登录</h3>
+        <p class="login-tip-message">您需要登录后才能使用此功能，请先登录或注册。</p>
+        <button class="login-tip-btn" @click="closeLoginTip">知道了</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -245,6 +255,20 @@ import { listForumPosts, prependForumPost, updateForumPost, type ForumPostStored
 
 const router = useRouter()
 const route = useRoute()
+
+// ============ 未登录提示弹窗 ============
+const showLoginTip = ref(false)
+const showLoginRequired = () => {
+  showLoginTip.value = true
+}
+const closeLoginTip = () => {
+  showLoginTip.value = false
+}
+
+// ============ 登录检查辅助函数 ============
+const isLoggedIn = (): boolean => {
+  return !!localStorage.getItem('token')
+}
 
 interface Comment {
   id: number
@@ -270,7 +294,7 @@ interface Post {
 const FAVORITE_KIND = 'forum' as const
 
 const getDefaultAvatar = (seed: string): string =>
-  `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`
 
 const getCurrentUsername = (): string => {
   try {
@@ -360,24 +384,28 @@ const filteredPosts = computed(() => {
   const keyword = searchKeyword.value.trim().toLowerCase()
   if (!keyword) return posts.value
   return posts.value.filter(post =>
-    (post.content || '').toLowerCase().includes(keyword)
+      (post.content || '').toLowerCase().includes(keyword)
   )
 })
 
 const formatTime = (timestamp: number): string => {
   const now = Date.now()
   const diff = now - timestamp
-  
+
   if (diff < 60000) return '刚刚'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
   if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`
-  
+
   const date = new Date(timestamp)
   return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
 const toggleCollect = (post: Post) => {
+  if (!isLoggedIn()) {
+    showLoginRequired()
+    return
+  }
   const next = !post.isCollected
   post.isCollected = next
   if (next) {
@@ -401,6 +429,10 @@ const toggleCollect = (post: Post) => {
 }
 
 const openPublishModal = (post?: Post) => {
+  if (!isLoggedIn()) {
+    showLoginRequired()
+    return
+  }
   if (post) {
     isEditMode.value = true
     editingId.value = post.id
@@ -432,6 +464,10 @@ const openPostDetail = (post: Post) => {
 
 const publishPost = () => {
   if (!newPost.content.trim()) return
+  if (!isLoggedIn()) {
+    showLoginRequired()
+    return
+  }
 
   const author = getCurrentUsername()
   const authorAvatar = resolveAuthorAvatar(author, getCurrentUserAvatar())
@@ -518,7 +554,7 @@ const triggerUpload = () => {
 const handleImageUpload = (e: Event) => {
   const files = (e.target as HTMLInputElement).files
   if (!files) return
-  
+
   Array.from(files).forEach(() => {
     if (newPost.images.length >= 9) return
     const randomId = Math.floor(Math.random() * 1000)
@@ -531,6 +567,10 @@ const removeImage = (index: number) => {
 }
 
 const submitComment = () => {
+  if (!isLoggedIn()) {
+    showLoginRequired()
+    return
+  }
   const activePost = currentPost.value
   if (!newComment.value.trim() || !activePost) return
   const author = getCurrentUsername()
@@ -556,6 +596,10 @@ const submitComment = () => {
 }
 
 const startReply = (comment: Comment) => {
+  if (!isLoggedIn()) {
+    showLoginRequired()
+    return
+  }
   replyingToComment.value = comment
 }
 
@@ -565,7 +609,7 @@ const cancelReply = () => {
 }
 
 const canDeleteComment = (comment: Comment): boolean => {
-  return comment.author === getCurrentUsername()
+  return isLoggedIn() && comment.author === getCurrentUsername()
 }
 
 const syncPostToStorage = (post: Post) => {
@@ -590,6 +634,10 @@ const syncPostToStorage = (post: Post) => {
 }
 
 const deleteComment = (target: Comment) => {
+  if (!isLoggedIn()) {
+    showLoginRequired()
+    return
+  }
   const activePost = currentPost.value
   if (!activePost?.comments || !canDeleteComment(target)) return
   if (!window.confirm('确认删除这条回复吗？')) return
@@ -1114,7 +1162,6 @@ onMounted(() => {
   color: #1976d2;
   font-weight: 600;
 }
-/* 关键修改：回复和删除按钮位于同一水平线 */
 .comment-actions {
   margin-top: 6px;
   display: flex;
@@ -1152,5 +1199,76 @@ onMounted(() => {
   max-width: 90%;
   max-height: 90%;
   border-radius: 8px;
+}
+
+/* 未登录提示弹窗 - 橙黄色主题 */
+.login-tip-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  animation: fadeIn 0.2s ease;
+}
+
+.login-tip-card {
+  background: #fff8f0;
+  border-radius: 24px;
+  padding: 28px 24px;
+  max-width: 300px;
+  width: 85%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid #ffd89a;
+  animation: slideUp 0.3s ease;
+}
+
+.login-tip-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.login-tip-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e67e22;
+  margin: 0 0 8px 0;
+}
+
+.login-tip-message {
+  font-size: 14px;
+  color: #8b5a2b;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.login-tip-btn {
+  background: #f39c12;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 40px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+}
+
+.login-tip-btn:hover {
+  background: #e67e22;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>

@@ -9,6 +9,7 @@ import Forum from '../views/Forum.vue'
 import Personal from '../views/Personal.vue'
 import AiRecognize from '../views/AiRecognize.vue'
 import AIChat from '../views/AIChat.vue';
+import AiModelInfo from "@/views/AiModelInfo.vue";
 // @ts-ignore
 import TestView from '../views/TestView.vue'
 
@@ -57,13 +58,17 @@ const router = createRouter({
     {
       path: '/forum',
       name: 'forum',
-      component: Forum
+      component: Forum,
+      meta: {hideNavBar: true}
     },
     {
       path: '/pet-profile',
       name: 'petProfile',
       component: () => import('../views/PetProfile.vue'),
-      meta: {requiresAuth: true}
+      meta: {
+        requiresAuth: true,
+        hideNavBar: true
+      }
     },
     {
       path: '/ai-model-info',
