@@ -628,6 +628,7 @@ onMounted(() => {
   gap: 10px; 
   padding: 6px 2px; 
   color: black; 
+  text-align: left;
 }
 
 .avatar { 
@@ -642,9 +643,11 @@ onMounted(() => {
 .user-info { 
   display: flex; 
   flex-direction: column; 
+  align-items: flex-start;
   gap: 8px; 
   flex: 1; 
   min-width: 0; 
+  text-align: left;
 }
 
 .username { 
@@ -652,17 +655,23 @@ onMounted(() => {
   font-weight: bold; 
   margin: 0; 
   word-break: break-all; 
+  width: 100%;
+  text-align: left;
 }
 
 .phone { 
   font-size: 14px; 
   opacity: 0.9; 
   margin: 0; 
+  width: 100%;
+  text-align: left;
 }
 
 .stats { 
   font-size: 14px; 
   opacity: 0.9; 
+  width: 100%;
+  text-align: left;
 }
 
 .divider { 
@@ -674,6 +683,8 @@ onMounted(() => {
   opacity: 0.8; 
   margin: 0; 
   word-break: break-all; 
+  width: 100%;
+  text-align: left;
 }
 
 .stats-cards { 
