@@ -83,7 +83,7 @@
             <span class="icon">⚡</span> 训练效果与部署 (Performance & Deployment)
           </h2>
           <p>
-            经过在 Apple M 系列芯片上的 MPS 加速训练，最终选出的最优快照达到了以下性能指标：
+            经过训练后，最终选出的最优快照达到了以下性能指标：
           </p>
           <ul>
             <li><strong>最终测试集准确率 (Test Accuracy)：</strong> 达到 <span class="highlight">96.09%</span>。这在难度极高的 37 类细粒度分类任务中属于相当优秀的水准。</li>
