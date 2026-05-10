@@ -262,6 +262,7 @@ import { useRouter } from 'vue-router'
 import request from '../api/request.js'
 import { listFavorites, removeFavorite, type StoredFavorite } from '../utils/favorites'
 import { listForumPosts, removeForumPost } from '../utils/forumPosts'
+import { migrateLegacyForumData } from '../utils/forumMigration'
 
 const router = useRouter()
 const defaultAvatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=profile'
@@ -582,8 +583,9 @@ onMounted(() => {
     router.replace('/')
     return
   }
-  refreshFavorites()
   ;(async () => {
+    await migrateLegacyForumData()
+    refreshFavorites()
     await fetchUserInfo()
     await fetchMyPosts()
     mergeMyForumPosts()

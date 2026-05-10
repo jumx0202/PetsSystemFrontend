@@ -252,6 +252,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { isFavorite, upsertFavorite, removeFavorite } from '../utils/favorites'
 import { listForumPosts, prependForumPost, updateForumPost, type ForumPostStored } from '../utils/forumPosts'
+import { migrateLegacyForumData } from '../utils/forumMigration'
 
 const router = useRouter()
 const route = useRoute()
@@ -661,7 +662,8 @@ const hydrateCollectState = () => {
   })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await migrateLegacyForumData()
   const stored = listForumPosts()
   if (stored.length > 0) {
     const merged = new Map<number, Post>()
