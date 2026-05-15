@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="duck image">
+  <rect width="400" height="400" rx="32" fill="#eef7ff"/>
+  <ellipse cx="188" cy="228" rx="106" ry="86" fill="#fff4b8"/>
+  <circle cx="248" cy="145" r="58" fill="#fff4b8"/>
+  <circle cx="262" cy="138" r="7" fill="#374151"/>
+  <polygon points="290,156 352,176 290,195" fill="#f59e0b"/>
+  <ellipse cx="140" cy="232" rx="46" ry="48" fill="#ffffff" opacity="0.45"/>
+  <path d="M160 300v36M214 300v36" stroke="#f59e0b" stroke-width="8" stroke-linecap="round"/>
+  <path d="M145 336h30M199 336h30" stroke="#f59e0b" stroke-width="6" stroke-linecap="round"/>
+</svg>

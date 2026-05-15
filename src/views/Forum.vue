@@ -56,6 +56,7 @@
                   v-for="(img, index) in post.images.slice(0, 9)"
                   :key="index"
                   :src="img"
+                  @error="handleForumImageError"
                   @click.stop="previewImage(img)"
                   alt="post image"
               />
@@ -104,7 +105,7 @@
 
         <div class="image-upload-area">
           <div v-for="(img, index) in newPost.images" :key="index" class="preview-item">
-            <img :src="img" />
+            <img :src="img" @error="handleForumImageError" />
             <button class="remove-img" @click="removeImage(index)">×</button>
           </div>
           <button v-if="newPost.images.length < 9" class="upload-btn" @click="triggerUpload">
@@ -153,6 +154,7 @@
                 v-for="(img, index) in currentPost.images"
                 :key="index"
                 :src="img"
+                @error="handleForumImageError"
                 @click="previewImage(img)"
             />
           </div>
@@ -232,7 +234,7 @@
 
     <!-- 图片预览 -->
     <div v-if="previewImageUrl" class="image-preview-overlay" @click.self="previewImageUrl = null">
-      <img :src="previewImageUrl" class="preview-large" />
+      <img :src="previewImageUrl" class="preview-large" @error="handleForumImageError" />
     </div>
 
     <!-- 未登录提示弹窗 -->
@@ -256,6 +258,11 @@ import { migrateLegacyForumData } from '../utils/forumMigration'
 
 const router = useRouter()
 const route = useRoute()
+const getAssetUrl = (path: string) => new URL(path, window.location.origin).href
+const DEFAULT_PET_IMAGE = getAssetUrl('/default-pet.svg')
+const BIRD_PET_IMAGE = getAssetUrl('/bird-pet.svg')
+const HAMSTER_PET_IMAGE = getAssetUrl('/hamster-pet.svg')
+const DUCK_PET_IMAGE = getAssetUrl('/duck-pet.svg')
 
 // ============ 未登录提示弹窗 ============
 const showLoginTip = ref(false)
@@ -332,28 +339,28 @@ const resolveAuthorAvatar = (author: string, avatar?: string): string => {
 const posts = ref<Post[]>([
   {
     id: 1,
-    author: '小明',
-    authorAvatar: getDefaultAvatar('小明'),
-    content: '今天天气真好，出去散步看到了很美的风景！分享给大家～',
+    author: '小满',
+    authorAvatar: getDefaultAvatar('小满'),
+    content: '周末带家里的金毛去公园放风，回来后认真梳毛、擦脚，再奖励一小块冻干，狗狗情绪特别稳定。想提醒大家，外出玩耍后记得检查爪垫和耳朵，能少很多小问题。',
     images: [
-      'https://picsum.photos/400/400?random=1',
-      'https://picsum.photos/400/400?random=2'
+      DEFAULT_PET_IMAGE,
+      DUCK_PET_IMAGE
     ],
     comments: [
-      { id: 1, author: '小红', content: '确实很美！', time: Date.now() - 3600000 }
+      { id: 1, author: '小雨', content: '这个提醒很实用，遛狗回家后检查一下真的很有必要。', time: Date.now() - 3600000 }
     ],
     createTime: Date.now() - 7200000,
     isCollected: false
   },
   {
     id: 2,
-    author: '旅行达人',
-    authorAvatar: getDefaultAvatar('旅行达人'),
-    content: '分享一个超棒的旅行攻略，三天两夜玩转大理！第一天...',
+    author: '阿橘',
+    authorAvatar: getDefaultAvatar('阿橘'),
+    content: '最近给家里的猫换成了分餐喂食加逗猫棒消耗精力的节奏，晚上跑酷明显少了很多。猫咪如果总在半夜闹腾，很多时候不是故意捣乱，而是白天运动和互动不够。',
     images: [
-      'https://picsum.photos/400/400?random=3',
-      'https://picsum.photos/400/400?random=4',
-      'https://picsum.photos/400/400?random=5'
+      BIRD_PET_IMAGE,
+      HAMSTER_PET_IMAGE,
+      DEFAULT_PET_IMAGE
     ],
     comments: [],
     createTime: Date.now() - 86400000,
@@ -413,7 +420,7 @@ const toggleCollect = (post: Post) => {
     upsertFavorite({
       kind: FAVORITE_KIND,
       id: post.id,
-      image: post.images?.[0] || 'https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=400&h=400&fit=crop',
+      image: post.images?.[0] || DEFAULT_PET_IMAGE,
       title: post.content?.slice(0, 18) || '论坛帖子',
       subtitle: `${post.author} · ${formatTime(post.createTime)}`,
       detail: {
@@ -504,7 +511,7 @@ const publishPost = () => {
         upsertFavorite({
           kind: FAVORITE_KIND,
           id: next.id,
-          image: next.images?.[0] || 'https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=400&h=400&fit=crop',
+          image: next.images?.[0] || DEFAULT_PET_IMAGE,
           title: next.content?.slice(0, 18) || '论坛帖子',
           subtitle: `${next.author} · ${formatTime(next.createTime)}`,
           detail: {
@@ -558,8 +565,7 @@ const handleImageUpload = (e: Event) => {
 
   Array.from(files).forEach(() => {
     if (newPost.images.length >= 9) return
-    const randomId = Math.floor(Math.random() * 1000)
-    newPost.images.push(`https://picsum.photos/400/400?random=${randomId}`)
+    newPost.images.push(DEFAULT_PET_IMAGE)
   })
 }
 
@@ -654,6 +660,11 @@ const deleteComment = (target: Comment) => {
 
 const previewImage = (url: string) => {
   previewImageUrl.value = url
+}
+
+const handleForumImageError = (event: Event) => {
+  const target = event.target as HTMLImageElement
+  target.src = DEFAULT_PET_IMAGE
 }
 
 const hydrateCollectState = () => {

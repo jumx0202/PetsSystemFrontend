@@ -30,7 +30,8 @@
                 <span class="user-phone">{{ currentUser.phone }}</span>
               </div>
               <div class="dropdown-divider"></div>
-              <button class="dropdown-item" @click="goToProfile">个人中心</button>
+              <button class="dropdown-item" @click="goToProfile">个人空间</button>
+              <button class="dropdown-item" @click="openProfileModal">修改资料</button>
               <button class="dropdown-item logout-btn" @click="logout">退出登录</button>
             </div>
           </div>
@@ -124,11 +125,105 @@
         </div>
       </div>
     </div>
+
+    <div v-if="showProfileModal" class="modal-overlay" @click="closeProfileModal">
+      <div class="modal-content profile-modal" @click.stop>
+        <button class="modal-close" @click="closeProfileModal">×</button>
+        <h3 class="modal-title">修改资料</h3>
+
+        <input class="fake-autofill" type="text" autocomplete="username" tabindex="-1" />
+        <input class="fake-autofill" type="password" autocomplete="new-password" tabindex="-1" />
+
+        <div class="form-group">
+          <label>用户昵称</label>
+          <input
+            v-model.trim="profileForm.username"
+            type="text"
+            placeholder="请输入新的昵称"
+            maxlength="20"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>头像地址</label>
+          <input
+            v-model.trim="profileForm.avatar"
+            type="url"
+            placeholder="请输入头像图片地址"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="avatar-preview-block">
+          <div class="avatar-preview-label">头像预览</div>
+          <img
+            :src="profileAvatarPreview"
+            alt="头像预览"
+            class="profile-avatar-preview"
+            @error="handleProfileAvatarError"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>原密码</label>
+          <input
+            v-model="profileForm.oldPassword"
+            :readonly="!passwordFieldsEnabled"
+            type="password"
+            placeholder="请输入原密码"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            data-lpignore="true"
+            @focus="unlockPasswordFields"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>新密码</label>
+          <input
+            v-model="profileForm.newPassword"
+            :readonly="!passwordFieldsEnabled"
+            type="password"
+            placeholder="请输入新密码（至少6位）"
+            autocomplete="new-password"
+            autocapitalize="off"
+            spellcheck="false"
+            data-lpignore="true"
+            @focus="unlockPasswordFields"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>确认新密码</label>
+          <input
+            v-model="profileForm.confirmPassword"
+            :readonly="!passwordFieldsEnabled"
+            type="password"
+            placeholder="请再次输入新密码"
+            autocomplete="new-password"
+            autocapitalize="off"
+            spellcheck="false"
+            data-lpignore="true"
+            @focus="unlockPasswordFields"
+          />
+        </div>
+
+        <div v-if="profileError" class="error-message">{{ profileError }}</div>
+        <div v-if="profileSuccess" class="success-message">{{ profileSuccess }}</div>
+
+        <div class="modal-footer">
+          <button class="submit-btn" @click="handleProfileSave" :disabled="isProfileSaving">
+            {{ isProfileSaving ? '保存中...' : '保存修改' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </nav>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -164,9 +259,25 @@ const registerError = ref('')
 
 // ============ 加载状态 ============
 const isLoading = ref(false)
+const isProfileSaving = ref(false)
 
 // ============ API 基础配置 ============
 const API_BASE_URL = 'http://localhost:8080/api'  // 根据后端实际地址修改
+
+const DEFAULT_AVATAR = 'https://api.dicebear.com/7.x/avataaars/svg?seed=default'
+
+const showProfileModal = ref(false)
+const passwordFieldsEnabled = ref(false)
+const profileError = ref('')
+const profileSuccess = ref('')
+const profileForm = reactive({
+  username: '',
+  avatar: '',
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+const profileAvatarPreview = computed(() => profileForm.avatar || currentUser.value.avatar || DEFAULT_AVATAR)
 
 // 封装请求方法
 const request = async (url: string, method: string, data?: any) => {
@@ -245,6 +356,28 @@ const closeRegisterModal = () => {
   registerError.value = ''
 }
 
+const resetProfileForm = () => {
+  profileForm.username = currentUser.value.username || ''
+  profileForm.avatar = currentUser.value.avatar || ''
+  profileForm.oldPassword = ''
+  profileForm.newPassword = ''
+  profileForm.confirmPassword = ''
+  passwordFieldsEnabled.value = false
+  profileError.value = ''
+  profileSuccess.value = ''
+}
+
+const openProfileModal = () => {
+  showUserMenu.value = false
+  resetProfileForm()
+  showProfileModal.value = true
+}
+
+const closeProfileModal = () => {
+  showProfileModal.value = false
+  resetProfileForm()
+}
+
 const switchToRegister = () => {
   closeLoginModal()
   openRegisterModal()
@@ -288,7 +421,7 @@ const handleLogin = async () => {
         id: userData.id,
         username: userData.username,
         phone: userData.phone,
-        avatar: userData.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default',
+        avatar: userData.avatar || DEFAULT_AVATAR,
         token
       }
       
@@ -364,7 +497,7 @@ const handleRegister = async () => {
         id: userData.id,
         username: userData.username,
         phone: userData.phone,
-        avatar: userData.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=default',
+        avatar: userData.avatar || DEFAULT_AVATAR,
         token
       }
       
@@ -404,7 +537,7 @@ const logout = () => {
     id: null,
     username: '',
     phone: '',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=default',
+    avatar: DEFAULT_AVATAR,
     token: ''
   }
   
@@ -413,6 +546,7 @@ const logout = () => {
   localStorage.removeItem('userInfo')
   
   showUserMenu.value = false
+  showProfileModal.value = false
   router.push('/')
 }
 
@@ -431,6 +565,97 @@ const handleClickOutside = (event: MouseEvent) => {
 const goToProfile = () => {
   showUserMenu.value = false
   router.push('/personal')
+}
+
+const unlockPasswordFields = () => {
+  if (!passwordFieldsEnabled.value) {
+    passwordFieldsEnabled.value = true
+  }
+}
+
+const handleProfileAvatarError = (event: Event) => {
+  const target = event.target as HTMLImageElement
+  target.src = currentUser.value.avatar || DEFAULT_AVATAR
+}
+
+const syncCurrentUser = (payload: { username: string; avatar: string }) => {
+  currentUser.value = {
+    ...currentUser.value,
+    username: payload.username,
+    avatar: payload.avatar || DEFAULT_AVATAR
+  }
+  localStorage.setItem('userInfo', JSON.stringify(currentUser.value))
+  window.dispatchEvent(new CustomEvent('user-info-updated', { detail: currentUser.value }))
+}
+
+const handleProfileSave = async () => {
+  profileError.value = ''
+  profileSuccess.value = ''
+
+  if (!profileForm.username) {
+    profileError.value = '请输入用户昵称'
+    return
+  }
+
+  const wantsPasswordChange = !!(profileForm.oldPassword || profileForm.newPassword || profileForm.confirmPassword)
+  if (wantsPasswordChange) {
+    if (!profileForm.oldPassword) {
+      profileError.value = '修改密码前请先输入原密码'
+      return
+    }
+    if (!profileForm.newPassword || profileForm.newPassword.length < 6) {
+      profileError.value = '新密码至少需要 6 位'
+      return
+    }
+    if (profileForm.newPassword !== profileForm.confirmPassword) {
+      profileError.value = '两次输入的新密码不一致'
+      return
+    }
+    if (profileForm.oldPassword === profileForm.newPassword) {
+      profileError.value = '新密码不能与原密码相同'
+      return
+    }
+  }
+
+  isProfileSaving.value = true
+
+  try {
+    const updateResult = await request('/user/update', 'PUT', {
+      username: profileForm.username,
+      phone: currentUser.value.phone,
+      avatar: profileForm.avatar
+    })
+
+    if (updateResult.code !== 200) {
+      profileError.value = updateResult.message || '资料保存失败'
+      return
+    }
+
+    if (wantsPasswordChange) {
+      const passwordResult = await request(
+        `/user/password?oldPassword=${encodeURIComponent(profileForm.oldPassword)}&newPassword=${encodeURIComponent(profileForm.newPassword)}`,
+        'PUT'
+      )
+
+      if (passwordResult.code !== 200) {
+        profileError.value = passwordResult.message || '密码修改失败'
+        return
+      }
+    }
+
+    syncCurrentUser({
+      username: profileForm.username,
+      avatar: profileForm.avatar || DEFAULT_AVATAR
+    })
+    profileSuccess.value = wantsPasswordChange ? '资料和密码已更新' : '资料已更新'
+    resetProfileForm()
+    showProfileModal.value = false
+  } catch (error) {
+    profileError.value = '保存失败，请稍后重试'
+    console.error('更新资料失败:', error)
+  } finally {
+    isProfileSaving.value = false
+  }
 }
 </script>
 
@@ -723,6 +948,16 @@ const goToProfile = () => {
   border-radius: 6px;
 }
 
+.success-message {
+  color: #1b7f3b;
+  font-size: 13px;
+  margin-bottom: 15px;
+  text-align: center;
+  padding: 8px;
+  background-color: #eefbf3;
+  border-radius: 6px;
+}
+
 .modal-footer {
   margin-top: 20px;
 }
@@ -766,6 +1001,42 @@ const goToProfile = () => {
 
 .switch-tip span:hover {
   text-decoration: underline;
+}
+
+.profile-modal {
+  max-width: 440px;
+}
+
+.avatar-preview-block {
+  margin: -4px 0 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.avatar-preview-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.profile-avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.fake-autofill {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* 响应式 */

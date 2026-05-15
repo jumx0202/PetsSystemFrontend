@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="hamster image">
+  <rect width="400" height="400" rx="32" fill="#fdf2e9"/>
+  <ellipse cx="130" cy="118" rx="52" ry="66" fill="#d89a62"/>
+  <ellipse cx="270" cy="118" rx="52" ry="66" fill="#d89a62"/>
+  <circle cx="200" cy="205" r="108" fill="#dca16d"/>
+  <ellipse cx="200" cy="234" rx="68" ry="52" fill="#f8e2cf"/>
+  <circle cx="160" cy="190" r="11" fill="#45352d"/>
+  <circle cx="240" cy="190" r="11" fill="#45352d"/>
+  <ellipse cx="200" cy="220" rx="16" ry="12" fill="#8a5c45"/>
+  <path d="M178 246c9 10 18 15 22 15s13-5 22-15" fill="none" stroke="#8a5c45" stroke-linecap="round" stroke-width="8"/>
+  <path d="M146 222h-30M284 222h-30M144 238h-34M290 238h-34" stroke="#b57f66" stroke-linecap="round" stroke-width="5"/>
+</svg>

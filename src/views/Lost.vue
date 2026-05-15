@@ -118,7 +118,8 @@
           <div class="pet-card-front">
             <!-- 上方：宠物图片 -->
             <div class="pet-image-wrapper">
-              <img :src="pet.image" class="pet-image" />
+              <div v-if="pet.status === 'FOUND'" class="pet-status-badge found-badge">已找回</div>
+              <img :src="pet.image" :data-breed="pet.breed" :data-pet-id="pet.id" class="pet-image" @error="handlePetImageError" />
             </div>
 
             <!-- 图片下方：点击任意信息区翻转 -->
@@ -246,7 +247,7 @@
         <button class="modal-close" @click="closeContactModal">×</button>
         <div class="modal-header">
           <div class="modal-pet-avatar">
-            <img :src="selectedPet?.image"/>
+            <img :src="selectedPet?.posterAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=lost-poster'"/>
           </div>
           <h3 class="modal-title">联系</h3>
         </div>
@@ -311,6 +312,13 @@ import request from '../api/request.js'
 import { upsertFavorite, removeFavorite, isFavorite, type FavoriteKind } from '../utils/favorites'
 
 const router = useRouter()
+const API_BASE_URL = 'http://localhost:8080'
+const getAssetUrl = (path: string) => new URL(path, window.location.origin).href
+const DEFAULT_PET_IMAGE = getAssetUrl('/default-pet.svg')
+const HAMSTER_PET_IMAGE = getAssetUrl('/hamster-pet.svg')
+const BIRD_PET_IMAGE = getAssetUrl('/bird-pet.svg')
+const SNAKE_PET_IMAGE = getAssetUrl('/snake-pet.svg')
+const DUCK_PET_IMAGE = getAssetUrl('/duck-pet.svg')
 
 const FAVORITE_KIND: FavoriteKind = 'lost'
 
@@ -346,9 +354,14 @@ const types = ['狗', '猫', '其他']
 interface LostPet {
   id: number
   image: string
+  imageCandidates?: string[]
+  imageCandidateIndex?: number
+  imageLoadFailed?: boolean
+  originalOrder?: number
   posterAvatar?: string
   favoriteCount?: number
   favorited?: boolean
+  status?: string
   description: string
   petName: string
   lostTime: string
@@ -375,18 +388,107 @@ interface LostPostDTO {
   contactPhone?: string
   contactWechat?: string
   description?: string
+  status?: string
   publisher?: { avatar?: string }
   images?: string[]
 }
 
 const lostPets = ref<LostPet[]>([])
 
+const getFallbackImageByBreed = (breed?: string) => {
+  const normalizedBreed = (breed || '').toLowerCase()
+  if (normalizedBreed.includes('hamster') || normalizedBreed.includes('仓鼠')) return HAMSTER_PET_IMAGE
+  if (
+    normalizedBreed.includes('budgerigar') ||
+    normalizedBreed.includes('cockatiel') ||
+    normalizedBreed.includes('parrot') ||
+    normalizedBreed.includes('bird') ||
+    normalizedBreed.includes('鹦鹉') ||
+    normalizedBreed.includes('鸟')
+  ) return BIRD_PET_IMAGE
+  if (normalizedBreed.includes('snake') || normalizedBreed.includes('corn snake') || normalizedBreed.includes('蛇')) return SNAKE_PET_IMAGE
+  if (normalizedBreed.includes('duck') || normalizedBreed.includes('call duck') || normalizedBreed.includes('鸭')) return DUCK_PET_IMAGE
+  return DEFAULT_PET_IMAGE
+}
+
+const normalizePetImage = (imageUrl?: string, breed?: string) => {
+  if (!imageUrl) return getFallbackImageByBreed(breed)
+  const assetMatch = imageUrl.match(/\/(default-pet|hamster-pet|bird-pet|snake-pet|duck-pet)\.svg$/i)
+  if (assetMatch) {
+    return getAssetUrl(`/${assetMatch[1]}.svg`)
+  }
+  const uploadImageMatch = imageUrl.match(/\/upload\/images\/([^/?#]+)/i)
+  if (uploadImageMatch) {
+    return `${API_BASE_URL}/upload/images/${uploadImageMatch[1]}`
+  }
+  const imageRouteMatch = imageUrl.match(/\/images\/([^/?#]+)/i)
+  if (imageRouteMatch) {
+    return `${API_BASE_URL}/images/${imageRouteMatch[1]}`
+  }
+  if (
+    imageUrl.startsWith('http://') ||
+    imageUrl.startsWith('https://') ||
+    imageUrl.startsWith('data:') ||
+    imageUrl.startsWith('blob:')
+  ) {
+    return imageUrl
+  }
+  if (imageUrl.startsWith('/upload/') || imageUrl.startsWith('/images/')) {
+    return `${API_BASE_URL}${imageUrl}`
+  }
+  if (imageUrl.startsWith('/')) {
+    return getAssetUrl(imageUrl)
+  }
+  return getFallbackImageByBreed(breed)
+}
+
+const buildImageCandidates = (imageUrl?: string, breed?: string) => {
+  const fallbackImage = getFallbackImageByBreed(breed)
+  const candidates: string[] = []
+  const pushCandidate = (candidate?: string) => {
+    if (!candidate || candidates.includes(candidate)) return
+    candidates.push(candidate)
+  }
+
+  if (!imageUrl) {
+    pushCandidate(fallbackImage)
+    return candidates
+  }
+
+  pushCandidate(normalizePetImage(imageUrl, breed))
+
+  const filename =
+    imageUrl.match(/\/upload\/images\/([^/?#]+)/i)?.[1] ||
+    imageUrl.match(/\/images\/([^/?#]+)/i)?.[1]
+
+  if (filename) {
+    pushCandidate(`${API_BASE_URL}/upload/images/${filename}`)
+    pushCandidate(`${API_BASE_URL}/images/${filename}`)
+  }
+
+  pushCandidate(fallbackImage)
+  return candidates
+}
+
+function createLostPetImageState(pet: LostPet, order: number): LostPet {
+  const imageCandidates = buildImageCandidates(pet.image, pet.breed)
+  return {
+    ...pet,
+    image: imageCandidates[0] ?? getFallbackImageByBreed(pet.breed),
+    imageCandidates,
+    imageCandidateIndex: 0,
+    imageLoadFailed: false,
+    originalOrder: order
+  }
+}
+
 const mapLostDTOToPet = (item: LostPostDTO): LostPet => ({
   id: Number(item.id),
-  image: item.images?.[0] || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&h=400&fit=crop',
+  image: normalizePetImage(item.images?.[0], item.breed),
   posterAvatar: item.publisher?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=lost-poster',
   favoriteCount: 0,
   favorited: false,
+  status: item.status || 'SEARCHING',
   description: item.description || '',
   petName: item.petName || '未命名',
   lostTime: item.lostTime || '',
@@ -400,6 +502,9 @@ const mapLostDTOToPet = (item: LostPostDTO): LostPet => ({
   contactWechat: item.contactWechat || ''
 })
 
+const mapLostDTOToPetWithOrder = (item: LostPostDTO, order: number): LostPet =>
+  createLostPetImageState(mapLostDTOToPet(item), order)
+
 const fetchLostPosts = async () => {
   try {
     const res = await request.get('/api/lost/list', {
@@ -407,7 +512,7 @@ const fetchLostPosts = async () => {
     })
     const records = res?.data?.list ?? res?.data?.records
     if (res?.code === 200 && Array.isArray(records)) {
-      lostPets.value = records.map(mapLostDTOToPet)
+      lostPets.value = records.map((item: LostPostDTO, index: number) => mapLostDTOToPetWithOrder(item, index))
     }
   } catch (error) {
     console.warn('加载寻宠帖子失败，使用本地数据兜底', error)
@@ -429,15 +534,18 @@ const availableCities = computed(() => {
 
 // ============ 筛选逻辑 ============
 const filteredPets = computed(() => {
-  return lostPets.value.filter(pet => {
-    const matchCity = !activeCity.value || pet.city === activeCity.value
-    const matchGender = !activeGender.value || pet.gender === activeGender.value
-    const matchType = !activeType.value ||
-        (activeType.value === '狗' && !pet.breed.includes('Cat')) ||
-        (activeType.value === '猫' && pet.breed.includes('Cat')) ||
-        (activeType.value === '其他' && !pet.breed.includes('Cat') && !pet.breed.includes('Dog'))
-    return matchCity && matchGender && matchType
-  })
+  return lostPets.value
+    .filter(pet => {
+      if (pet.imageLoadFailed) return false
+      const matchCity = !activeCity.value || pet.city === activeCity.value
+      const matchGender = !activeGender.value || pet.gender === activeGender.value
+      const matchType = !activeType.value ||
+          (activeType.value === '狗' && !pet.breed.includes('Cat')) ||
+          (activeType.value === '猫' && pet.breed.includes('Cat')) ||
+          (activeType.value === '其他' && !pet.breed.includes('Cat') && !pet.breed.includes('Dog'))
+      return matchCity && matchGender && matchType
+    })
+    .sort((a, b) => (a.originalOrder ?? 0) - (b.originalOrder ?? 0))
 })
 
 const getGenderIcon = (gender: string) => {
@@ -546,6 +654,34 @@ const closeContactModal = () => {
   showContactModal.value = false
   selectedPet.value = null
   document.body.style.overflow = ''
+}
+
+const handlePetImageError = (event: Event) => {
+  const target = event.target as HTMLImageElement
+  const petId = Number(target.dataset.petId || 0)
+  const pet = lostPets.value.find(item => item.id === petId)
+  const fallbackImage = getFallbackImageByBreed(target.dataset.breed)
+
+  if (!pet) {
+    target.src = fallbackImage
+    return
+  }
+
+  const nextIndex = (pet.imageCandidateIndex ?? 0) + 1
+  if (pet.imageCandidates && nextIndex < pet.imageCandidates.length) {
+    pet.imageCandidateIndex = nextIndex
+    pet.image = pet.imageCandidates[nextIndex] ?? fallbackImage
+    pet.imageLoadFailed = pet.image === fallbackImage
+    target.src = pet.image
+    return
+  }
+
+  pet.imageLoadFailed = true
+  pet.image = fallbackImage
+  if (selectedPet.value?.id === pet.id) {
+    closeContactModal()
+  }
+  target.src = fallbackImage
 }
 
 // 通用复制功能
@@ -1023,6 +1159,25 @@ function resetFilters() {
   height: 240px;
   overflow: hidden;
   flex-shrink: 0;
+}
+
+.pet-status-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #fff;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.found-badge {
+  background: rgba(239, 108, 0, 0.88);
 }
 
 .pet-image {

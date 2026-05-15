@@ -51,7 +51,7 @@
       <ul v-else class="item-list">
         <li v-for="item in activeList" :key="`${activeTab}-${item.kind}-${item.id}`" class="item-row">
           <button class="item-main" @click="openPreview(item)">
-            <img :src="item.image" alt="帖子图片" class="item-cover" @error="handleImageError" />
+            <img :src="item.image" :data-breed="(item as any)?.detail?.breed || item.title" alt="帖子图片" class="item-cover" @error="handleImageError" />
             <div class="item-meta">
               <span class="item-tag" :class="getKindTagClass(item.kind)">
                 {{ getKindLabel(item.kind) }}
@@ -62,6 +62,16 @@
           </button>
           <button v-if="activeTab === 'favorite'" class="remove-btn" @click="removeOne(item)">取消收藏</button>
           <div v-else class="publish-actions">
+            <button
+              v-if="canMarkResolved(item as DisplayPost)"
+              class="status-btn"
+              @click="markPostResolved(item)"
+            >
+              {{ getResolveActionLabel(item as DisplayPost) }}
+            </button>
+            <span v-else-if="getResolvedLabel(item as DisplayPost)" class="status-text">
+              {{ getResolvedLabel(item as DisplayPost) }}
+            </span>
             <button class="edit-btn" @click="editPost(item)">编辑</button>
             <button class="delete-btn" @click="deletePost(item)">删除</button>
           </div>
@@ -104,7 +114,7 @@
             <!-- 正面 -->
             <div class="pet-card-front">
               <div class="pet-image-wrapper">
-                <img :src="selected.image" class="pet-image" @error="handleImageError" />
+                <img :src="selected.image" :data-breed="detail.breed || selected.title" class="pet-image" @error="handleImageError" />
               </div>
 
               <!-- 领养卡片正面信息 -->
@@ -194,7 +204,7 @@
             <!-- 背面 -->
             <div class="pet-card-back" @click="flipCard">
               <div v-if="selected.kind === 'adoption'" class="pet-image-wrapper">
-                <img :src="selected.image" class="pet-image" @error="handleImageError" />
+                <img :src="selected.image" :data-breed="detail.breed || selected.title" class="pet-image" @error="handleImageError" />
               </div>
               <div class="back-description-section">
                 <p class="back-description-text">{{ backDescription }}</p>
@@ -211,7 +221,7 @@
         <button class="modal-close" @click="closeContactModal">×</button>
         <div class="modal-header">
           <div class="modal-pet-avatar">
-            <img :src="selected?.image" @error="handleImageError" />
+            <img :src="detail.posterAvatar || defaultAvatar" @error="handleAvatarError" />
           </div>
           <h3 class="modal-title">联系</h3>
         </div>
@@ -266,6 +276,12 @@ import { migrateLegacyForumData } from '../utils/forumMigration'
 
 const router = useRouter()
 const defaultAvatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=profile'
+const getAssetUrl = (path: string) => new URL(path, window.location.origin).href
+const DEFAULT_PET_IMAGE = getAssetUrl('/default-pet.svg')
+const HAMSTER_PET_IMAGE = getAssetUrl('/hamster-pet.svg')
+const BIRD_PET_IMAGE = getAssetUrl('/bird-pet.svg')
+const SNAKE_PET_IMAGE = getAssetUrl('/snake-pet.svg')
+const DUCK_PET_IMAGE = getAssetUrl('/duck-pet.svg')
 
 const loading = ref(true)
 type PostKind = 'adoption' | 'lost' | 'forum'
@@ -343,6 +359,42 @@ const formatForumTime = (timestamp?: number) => {
   return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
+const getFallbackImageByBreed = (breed?: string) => {
+  const normalizedBreed = (breed || '').toLowerCase()
+  if (normalizedBreed.includes('hamster') || normalizedBreed.includes('仓鼠')) return HAMSTER_PET_IMAGE
+  if (
+    normalizedBreed.includes('budgerigar') ||
+    normalizedBreed.includes('cockatiel') ||
+    normalizedBreed.includes('parrot') ||
+    normalizedBreed.includes('bird') ||
+    normalizedBreed.includes('鹦鹉') ||
+    normalizedBreed.includes('鸟')
+  ) return BIRD_PET_IMAGE
+  if (normalizedBreed.includes('snake') || normalizedBreed.includes('corn snake') || normalizedBreed.includes('蛇')) return SNAKE_PET_IMAGE
+  if (normalizedBreed.includes('duck') || normalizedBreed.includes('call duck') || normalizedBreed.includes('鸭')) return DUCK_PET_IMAGE
+  return DEFAULT_PET_IMAGE
+}
+
+const normalizePetImage = (imageUrl?: string, breed?: string) => {
+  if (!imageUrl) return getFallbackImageByBreed(breed)
+  const assetMatch = imageUrl.match(/\/(default-pet|hamster-pet|bird-pet|snake-pet|duck-pet)\.svg$/i)
+  if (assetMatch) {
+    return getAssetUrl(`/${assetMatch[1]}.svg`)
+  }
+  if (
+    imageUrl.startsWith('http://') ||
+    imageUrl.startsWith('https://') ||
+    imageUrl.startsWith('data:') ||
+    imageUrl.startsWith('blob:')
+  ) {
+    return imageUrl
+  }
+  if (imageUrl.startsWith('/')) {
+    return getAssetUrl(imageUrl)
+  }
+  return getFallbackImageByBreed(breed)
+}
+
 const toDisplayPost = (kind: PostKind, item: any): DisplayPost => {
   const fallbackTitle = kind === 'adoption'
     ? (item?.breed || '领养帖子')
@@ -353,7 +405,7 @@ const toDisplayPost = (kind: PostKind, item: any): DisplayPost => {
   return {
     kind,
     id: Number(item?.id),
-    image: item?.images?.[0] || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&h=400&fit=crop',
+    image: normalizePetImage(item?.images?.[0], item?.breed),
     title: fallbackTitle,
     subtitle: fallbackSubtitle,
     detail: {
@@ -368,6 +420,7 @@ const toDisplayPost = (kind: PostKind, item: any): DisplayPost => {
       contactName: item?.contactName || '',
       contactPhone: item?.contactPhone || '',
       contactWechat: item?.contactWechat || '',
+      status: item?.status || '',
       lostTime: item?.lostTime || '',
       petName: item?.petName || ''
     },
@@ -402,7 +455,7 @@ const mergeMyForumPosts = () => {
     .map((p): DisplayPost => ({
       kind: 'forum',
       id: p.id,
-      image: p.images?.[0] || 'https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=400&h=400&fit=crop',
+      image: normalizePetImage(p.images?.[0]),
       title: p.content?.slice(0, 18) || '论坛帖子',
       subtitle: `论坛 · ${formatForumTime(p.createTime)}`,
       detail: {
@@ -449,6 +502,65 @@ const editPost = (item: StoredFavorite) => {
     path: '/PostLost',
     query: { mode: 'edit', id: String(target.id) }
   })
+}
+
+const getResolvedLabel = (item: DisplayPost) => {
+  const status = item.raw?.status || (item.detail as any)?.status
+  if (item.kind === 'adoption' && status === 'FOUND') return '已领养'
+  if (item.kind === 'lost' && status === 'FOUND') return '已找回'
+  return ''
+}
+
+const canMarkResolved = (item: DisplayPost) => {
+  if (item.kind !== 'adoption' && item.kind !== 'lost') return false
+  return !getResolvedLabel(item)
+}
+
+const getResolveActionLabel = (item: DisplayPost) => {
+  return item.kind === 'adoption' ? '设为已领养' : '设为已找回'
+}
+
+const markPostResolved = async (item: StoredFavorite) => {
+  const target = item as DisplayPost
+  if (!canMarkResolved(target)) return
+
+  const confirmText = target.kind === 'adoption'
+    ? '确认这只宠物已经被领养了吗？'
+    : '确认这只宠物已经找回了吗？'
+  if (!confirm(confirmText)) return
+
+  try {
+    const url = target.kind === 'adoption'
+      ? `/api/adoption/${target.id}/adopt`
+      : `/api/lost/${target.id}/found`
+    const res = await request.post(url)
+    if (res?.code !== 200) {
+      alert(res?.message || '状态更新失败，请稍后再试')
+      return
+    }
+
+    myPosts.value = myPosts.value.map(post => {
+      if (post.kind !== target.kind || post.id !== target.id) return post
+      return {
+        ...post,
+        detail: { ...(post.detail as any), status: 'FOUND' },
+        raw: { ...(post.raw || {}), status: 'FOUND' }
+      }
+    })
+
+    if (selected.value?.kind === target.kind && selected.value?.id === target.id) {
+      selected.value = {
+        ...selected.value,
+        detail: { ...(selected.value.detail as any), status: 'FOUND' },
+        raw: { ...((selected.value as DisplayPost).raw || {}), status: 'FOUND' }
+      } as DisplayPost
+    }
+
+    alert(target.kind === 'adoption' ? '已设置为已领养' : '已设置为已找回')
+  } catch (error) {
+    console.error('更新帖子状态失败', error)
+    alert('状态更新失败，请检查网络后重试')
+  }
 }
 
 const deletePost = async (item: StoredFavorite) => {
@@ -556,7 +668,7 @@ const handleAvatarError = (e: Event) => {
 
 const handleImageError = (e: Event) => {
   const target = e.target as HTMLImageElement
-  target.src = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&h=400&fit=crop'
+  target.src = getFallbackImageByBreed(target.dataset.breed)
 }
 
 const logout = () => {
@@ -917,7 +1029,34 @@ onMounted(() => {
 .publish-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.status-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #2e7d32;
+  background: #e8f5e9;
+}
+
+.status-btn:hover {
+  background: #c8e6c9;
+}
+
+.status-text {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #ffffff;
+  background: #7b8a8b;
+  font-weight: 600;
 }
 
 .edit-btn,

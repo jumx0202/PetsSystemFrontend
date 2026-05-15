@@ -118,7 +118,8 @@
           <!-- 卡片正面 -->
           <div class="pet-card-front">
             <div class="pet-image-wrapper">
-              <img :src="pet.image" class="pet-image" />
+              <div v-if="pet.status === 'FOUND'" class="pet-status-badge adopted-badge">已领养</div>
+              <img :src="pet.image" :data-breed="pet.breed" :data-pet-id="pet.id" class="pet-image" @error="handlePetImageError" />
             </div>
 
             <div class="pet-info">
@@ -184,7 +185,7 @@
           <!-- 卡片背面 - 只有图片和完整description -->
           <div class="pet-card-back" @click="flipCard(pet.id)">
             <div class="pet-image-wrapper">
-              <img :src="pet.image" class="pet-image" />
+              <img :src="pet.image" :data-breed="pet.breed" :data-pet-id="pet.id" class="pet-image" @error="handlePetImageError" />
             </div>
             <div class="back-description-section">
               <p class="back-description-text">{{ pet.description }}</p>
@@ -238,7 +239,7 @@
         <button class="modal-close" @click="closeContactModal">×</button>
         <div class="modal-header">
           <div class="modal-pet-avatar">
-            <img :src="selectedPet?.image"/>
+            <img :src="selectedPet?.posterAvatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=poster'"/>
           </div>
           <h3 class="modal-title">联系</h3>
         </div>
@@ -301,6 +302,13 @@ import request from '../api/request.js'
 import { upsertFavorite, removeFavorite, isFavorite, type FavoriteKind } from '../utils/favorites'
 
 const router = useRouter()
+const API_BASE_URL = 'http://localhost:8080'
+const getAssetUrl = (path: string) => new URL(path, window.location.origin).href
+const DEFAULT_PET_IMAGE = getAssetUrl('/default-pet.svg')
+const HAMSTER_PET_IMAGE = getAssetUrl('/hamster-pet.svg')
+const BIRD_PET_IMAGE = getAssetUrl('/bird-pet.svg')
+const SNAKE_PET_IMAGE = getAssetUrl('/snake-pet.svg')
+const DUCK_PET_IMAGE = getAssetUrl('/duck-pet.svg')
 
 const FAVORITE_KIND: FavoriteKind = 'adoption'
 
@@ -385,9 +393,14 @@ const handleClickOutside = (event: MouseEvent) => {
 interface Pet {
   id: number
   image: string
+  imageCandidates?: string[]
+  imageCandidateIndex?: number
+  imageLoadFailed?: boolean
+  originalOrder?: number
   posterAvatar?: string
   favoriteCount?: number
   favorited?: boolean
+  status?: string
   gender: string
   breed: string
   description?: string
@@ -408,6 +421,7 @@ interface AdoptionPostDTO {
   contactPhone?: string
   contactWechat?: string
   description?: string
+  status?: string
   publisher?: { avatar?: string }
   images?: string[]
 }
@@ -415,99 +429,189 @@ interface AdoptionPostDTO {
 const pets = ref<Pet[]>([
   {
     id: 1,
-    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=400&fit=crop',
+    image: HAMSTER_PET_IMAGE,
     posterAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhang',
     favoriteCount: 128,
     favorited: false,
-    gender: '公',
+    gender: 'Male',
     breed: 'Terrier & Labrador Retriever',
-    description: '活泼亲人，已打疫苗，性格温顺，适合有小孩家庭。这是一只非常可爱的狗狗，喜欢在草地上奔跑，对人非常友好，是家庭的理想选择。',
-    city: '北京',
-    district: '朝阳区',
-    contactName: '张先生',
+    description: 'Friendly and vaccinated, suitable for a family that can provide regular outdoor exercise and patient companionship.',
+    city: 'Beijing',
+    district: 'Chaoyang District',
+    contactName: 'Zhang',
     contactPhone: '138-0000-0001',
     contactWechat: 'zhang_pet'
   },
   {
     id: 2,
-    image: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=400&fit=crop',
+    image: BIRD_PET_IMAGE,
     posterAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=li',
     favoriteCount: 86,
     favorited: false,
-    gender: '母',
-    breed: '金毛寻回犬',
-    description: '一岁半，非常友好，已绝育，寻找爱心家庭。金毛犬性格温和，是家庭的理想伴侣，特别适合有小孩的家庭。',
-    city: '上海',
-    district: '浦东新区',
-    contactName: '李女士',
+    gender: 'Female',
+    breed: 'Golden Retriever',
+    description: 'One and a half years old, gentle and already neutered. Looking for a caring home with enough space and daily interaction.',
+    city: 'Shanghai',
+    district: 'Pudong',
+    contactName: 'Li',
     contactPhone: '139-0000-0002'
   },
   {
     id: 3,
-    image: 'https://images.unsplash.com/photo-1583511655857-d19bc40da7e6?w=400&h=400&fit=crop',
+    image: SNAKE_PET_IMAGE,
     posterAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wang',
     favoriteCount: 64,
     favorited: false,
-    gender: '公',
-    breed: '阿拉斯加',
-    description: '两岁，巨型雪橇犬，习惯良好，需要大空间。阿拉斯加犬精力充沛，需要经常运动，适合有院子的家庭。',
-    city: '广州',
-    district: '天河区',
-    contactName: '王先生',
+    gender: 'Male',
+    breed: 'Alaskan Malamute',
+    description: 'Two years old, strong and energetic. Needs an adopter with large space and experience caring for active medium-to-large dogs.',
+    city: 'Guangzhou',
+    district: 'Tianhe District',
+    contactName: 'Wang',
     contactPhone: '137-0000-0003',
     contactWechat: 'wang_alaska'
   },
   {
     id: 4,
-    image: 'https://images.unsplash.com/photo-1513245543132-31f507417b26?w=400&h=400&fit=crop',
+    image: DUCK_PET_IMAGE,
     posterAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=chen',
     favoriteCount: 92,
     favorited: false,
-    gender: '母',
-    breed: '布偶猫',
-    description: '温柔粘人，纯种布偶，已驱虫，送猫砂盆。布偶猫是理想的室内宠物，性格温顺，喜欢被人抱在怀里。',
-    city: '深圳',
-    district: '南山区',
-    contactName: '陈女士',
+    gender: 'Female',
+    breed: 'Ragdoll Cat',
+    description: 'Indoor cat with a calm temperament. Adoption includes litter box and basic supplies, best for a stable and quiet home.',
+    city: 'Shenzhen',
+    district: 'Nanshan District',
+    contactName: 'Chen',
     contactPhone: '136-0000-0004'
   },
   {
     id: 5,
-    image: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=400&h=400&fit=crop',
+    image: DEFAULT_PET_IMAGE,
     posterAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=liu',
     favoriteCount: 47,
     favorited: false,
-    gender: '不详',
-    breed: '柯基',
-    description: '短腿萌犬，精力旺盛，已完成疫苗接种。柯基犬虽然腿短，但非常活泼可爱，是网红犬种。',
-    city: '杭州',
-    district: '西湖区',
-    contactName: '刘先生',
+    gender: 'Unknown',
+    breed: 'Corgi',
+    description: 'Short-legged and lively, completed basic vaccination. Suitable for a home that can provide regular walks and play time.',
+    city: 'Hangzhou',
+    district: 'Xihu District',
+    contactName: 'Liu',
     contactPhone: '135-0000-0005',
     contactWechat: 'liu_corgi'
   },
   {
     id: 6,
-    image: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=400&h=400&fit=crop',
+    image: DEFAULT_PET_IMAGE,
     posterAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhao',
     favoriteCount: 75,
     favorited: false,
-    gender: '母',
-    breed: '萨摩耶',
-    description: '微笑天使，三岁，性格乖巧，寻找有经验主人。萨摩耶犬有着美丽的白色毛发，需要定期梳理。',
-    city: '成都',
-    district: '锦江区',
-    contactName: '赵女士',
+    gender: 'Female',
+    breed: 'Samoyed',
+    description: 'Three years old with a very stable personality. Needs an adopter who can brush and care for a long white coat regularly.',
+    city: 'Chengdu',
+    district: 'Jinjiang District',
+    contactName: 'Zhao',
     contactPhone: '134-0000-0006'
-  }
+  },
 ])
+
+const getFallbackImageByBreed = (breed?: string) => {
+  const normalizedBreed = (breed || '').toLowerCase()
+  if (normalizedBreed.includes('hamster') || normalizedBreed.includes('仓鼠')) return HAMSTER_PET_IMAGE
+  if (
+    normalizedBreed.includes('budgerigar') ||
+    normalizedBreed.includes('cockatiel') ||
+    normalizedBreed.includes('parrot') ||
+    normalizedBreed.includes('bird') ||
+    normalizedBreed.includes('鹦鹉') ||
+    normalizedBreed.includes('鸟')
+  ) return BIRD_PET_IMAGE
+  if (normalizedBreed.includes('snake') || normalizedBreed.includes('corn snake') || normalizedBreed.includes('蛇')) return SNAKE_PET_IMAGE
+  if (normalizedBreed.includes('duck') || normalizedBreed.includes('call duck') || normalizedBreed.includes('鸭')) return DUCK_PET_IMAGE
+  return DEFAULT_PET_IMAGE
+}
+
+const normalizePetImage = (imageUrl?: string, breed?: string) => {
+  if (!imageUrl) return getFallbackImageByBreed(breed)
+  const assetMatch = imageUrl.match(/\/(default-pet|hamster-pet|bird-pet|snake-pet|duck-pet)\.svg$/i)
+  if (assetMatch) {
+    return getAssetUrl(`/${assetMatch[1]}.svg`)
+  }
+  const uploadImageMatch = imageUrl.match(/\/upload\/images\/([^/?#]+)/i)
+  if (uploadImageMatch) {
+    return `${API_BASE_URL}/upload/images/${uploadImageMatch[1]}`
+  }
+  const imageRouteMatch = imageUrl.match(/\/images\/([^/?#]+)/i)
+  if (imageRouteMatch) {
+    return `${API_BASE_URL}/images/${imageRouteMatch[1]}`
+  }
+  if (
+    imageUrl.startsWith('http://') ||
+    imageUrl.startsWith('https://') ||
+    imageUrl.startsWith('data:') ||
+    imageUrl.startsWith('blob:')
+  ) {
+    return imageUrl
+  }
+  if (imageUrl.startsWith('/upload/') || imageUrl.startsWith('/images/')) {
+    return `${API_BASE_URL}${imageUrl}`
+  }
+  if (imageUrl.startsWith('/')) {
+    return getAssetUrl(imageUrl)
+  }
+  return getFallbackImageByBreed(breed)
+}
+
+const buildImageCandidates = (imageUrl?: string, breed?: string) => {
+  const fallbackImage = getFallbackImageByBreed(breed)
+  const candidates: string[] = []
+  const pushCandidate = (candidate?: string) => {
+    if (!candidate || candidates.includes(candidate)) return
+    candidates.push(candidate)
+  }
+
+  if (!imageUrl) {
+    pushCandidate(fallbackImage)
+    return candidates
+  }
+
+  pushCandidate(normalizePetImage(imageUrl, breed))
+
+  const filename =
+    imageUrl.match(/\/upload\/images\/([^/?#]+)/i)?.[1] ||
+    imageUrl.match(/\/images\/([^/?#]+)/i)?.[1]
+
+  if (filename) {
+    pushCandidate(`${API_BASE_URL}/upload/images/${filename}`)
+    pushCandidate(`${API_BASE_URL}/images/${filename}`)
+  }
+
+  pushCandidate(fallbackImage)
+  return candidates
+}
+
+function createPetImageState(pet: Pet, order: number): Pet {
+  const imageCandidates = buildImageCandidates(pet.image, pet.breed)
+  return {
+    ...pet,
+    image: imageCandidates[0] ?? getFallbackImageByBreed(pet.breed),
+    imageCandidates,
+    imageCandidateIndex: 0,
+    imageLoadFailed: false,
+    originalOrder: order
+  }
+}
+
+pets.value = pets.value.map((pet, index) => createPetImageState(pet, index))
 
 const mapAdoptionDTOToPet = (item: AdoptionPostDTO): Pet => ({
   id: Number(item.id),
-  image: item.images?.[0] || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=400&h=400&fit=crop',
+  image: normalizePetImage(item.images?.[0], item.breed),
   posterAvatar: item.publisher?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=poster',
   favoriteCount: 0,
   favorited: false,
+  status: item.status || 'SEARCHING',
   gender: item.gender || '不详',
   breed: item.breed || '未知品种',
   description: item.description || '',
@@ -518,6 +622,9 @@ const mapAdoptionDTOToPet = (item: AdoptionPostDTO): Pet => ({
   contactWechat: item.contactWechat || ''
 })
 
+const mapAdoptionDTOToPetWithOrder = (item: AdoptionPostDTO, order: number): Pet =>
+  createPetImageState(mapAdoptionDTOToPet(item), order)
+
 const fetchAdoptionPosts = async () => {
   try {
     const res = await request.get('/api/adoption/list', {
@@ -525,7 +632,7 @@ const fetchAdoptionPosts = async () => {
     })
     const records = res?.data?.list ?? res?.data?.records
     if (res?.code === 200 && Array.isArray(records)) {
-      pets.value = records.map(mapAdoptionDTOToPet)
+      pets.value = records.map((item: AdoptionPostDTO, index: number) => mapAdoptionDTOToPetWithOrder(item, index))
     }
   } catch (error) {
     console.warn('加载领养帖子失败，使用本地数据兜底', error)
@@ -564,6 +671,34 @@ const closeContactModal = () => {
   showContactModal.value = false
   selectedPet.value = null
   document.body.style.overflow = ''
+}
+
+const handlePetImageError = (event: Event) => {
+  const target = event.target as HTMLImageElement
+  const petId = Number(target.dataset.petId || 0)
+  const pet = pets.value.find(item => item.id === petId)
+  const fallbackImage = getFallbackImageByBreed(target.dataset.breed)
+
+  if (!pet) {
+    target.src = fallbackImage
+    return
+  }
+
+  const nextIndex = (pet.imageCandidateIndex ?? 0) + 1
+  if (pet.imageCandidates && nextIndex < pet.imageCandidates.length) {
+    pet.imageCandidateIndex = nextIndex
+    pet.image = pet.imageCandidates[nextIndex] ?? fallbackImage
+    pet.imageLoadFailed = pet.image === fallbackImage
+    target.src = pet.image
+    return
+  }
+
+  pet.imageLoadFailed = true
+  pet.image = fallbackImage
+  if (selectedPet.value?.id === pet.id) {
+    closeContactModal()
+  }
+  target.src = fallbackImage
 }
 
 const toggleFavorite = (pet: Pet) => {
@@ -613,15 +748,18 @@ const copyToClipboard = (text: string | undefined, label: string) => {
 
 // ============ 筛选逻辑 ============
 const filteredPets = computed(() => {
-  return pets.value.filter(pet => {
-    const matchCity = !activeCity.value || pet.city === activeCity.value
-    const matchGender = !activeGender.value || pet.gender === activeGender.value
-    const matchType = !activeType.value ||
-        (activeType.value === '狗' && !pet.breed.includes('猫')) ||
-        (activeType.value === '猫' && pet.breed.includes('猫')) ||
-        (activeType.value === '其他' && pet.breed.includes('其他'))
-    return matchCity && matchGender && matchType
-  })
+  return pets.value
+    .filter(pet => {
+      if (pet.imageLoadFailed) return false
+      const matchCity = !activeCity.value || pet.city === activeCity.value
+      const matchGender = !activeGender.value || pet.gender === activeGender.value
+      const matchType = !activeType.value ||
+          (activeType.value === '狗' && !pet.breed.includes('猫')) ||
+          (activeType.value === '猫' && pet.breed.includes('猫')) ||
+          (activeType.value === '其他' && pet.breed.includes('其他'))
+      return matchCity && matchGender && matchType
+    })
+    .sort((a, b) => (a.originalOrder ?? 0) - (b.originalOrder ?? 0))
 })
 
 // ============ 性别图标 ============
@@ -1108,6 +1246,25 @@ function resetFilters() {
   height: 240px;
   overflow: hidden;
   flex-shrink: 0;
+}
+
+.pet-status-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #fff;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.adopted-badge {
+  background: rgba(46, 125, 50, 0.88);
 }
 
 .pet-image {

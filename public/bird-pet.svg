@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="bird image">
+  <rect width="400" height="400" rx="32" fill="#eef8ff"/>
+  <ellipse cx="198" cy="215" rx="98" ry="112" fill="#9ed36a"/>
+  <circle cx="206" cy="142" r="62" fill="#f6f06a"/>
+  <ellipse cx="166" cy="246" rx="42" ry="78" fill="#86c455"/>
+  <circle cx="186" cy="136" r="8" fill="#334155"/>
+  <circle cx="224" cy="136" r="8" fill="#334155"/>
+  <polygon points="254,148 312,170 254,188" fill="#f59e0b"/>
+  <path d="M170 314h110" stroke="#7c5a43" stroke-width="8" stroke-linecap="round"/>
+  <path d="M188 272v42M226 272v42" stroke="#7c5a43" stroke-width="6" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="default pet image">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f6fbff"/>
+      <stop offset="100%" stop-color="#e6f4ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="36" fill="url(#bg)"/>
+  <circle cx="200" cy="155" r="76" fill="#ffd7a8"/>
+  <ellipse cx="142" cy="100" rx="30" ry="54" transform="rotate(-24 142 100)" fill="#ffc689"/>
+  <ellipse cx="258" cy="100" rx="30" ry="54" transform="rotate(24 258 100)" fill="#ffc689"/>
+  <circle cx="170" cy="150" r="8" fill="#5a4a42"/>
+  <circle cx="230" cy="150" r="8" fill="#5a4a42"/>
+  <ellipse cx="200" cy="182" rx="18" ry="14" fill="#5a4a42"/>
+  <path d="M176 205c7 12 17 18 24 18s17-6 24-18" fill="none" stroke="#5a4a42" stroke-linecap="round" stroke-width="8"/>
+  <circle cx="115" cy="287" r="26" fill="#ffffff"/>
+  <circle cx="180" cy="305" r="30" fill="#ffffff"/>
+  <circle cx="240" cy="305" r="30" fill="#ffffff"/>
+  <circle cx="305" cy="287" r="26" fill="#ffffff"/>
+  <text x="200" y="360" text-anchor="middle" font-size="26" fill="#6b7a90" font-family="Arial, sans-serif">宠物图片加载失败</text>
+</svg>
