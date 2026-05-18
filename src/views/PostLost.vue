@@ -1,75 +1,69 @@
 <template>
   <div class="publish-lost">
-    <!-- 顶部导航栏 -->
     <div class="header">
       <button class="back-btn" @click="goBack">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
+          <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
       </button>
       <h1 class="page-title">
-        <span class="icon">🔍</span>
-        {{ isEditMode ? '编辑寻宠启事' : '寻宠启事' }}
+        <span class="icon">🔎</span>
+        {{ isEditMode ? '编辑寻宠启事' : '发布寻宠启事' }}
       </h1>
       <div class="placeholder"></div>
     </div>
 
-    <!-- 表单内容 -->
     <div class="form-container">
-      <!-- 图片上传区域 -->
       <div class="form-section">
         <div class="section-title">
           <span class="required">*</span>
           宠物照片
         </div>
         <div class="upload-area">
-          <div 
-            v-for="(img, index) in uploadedImages" 
-            :key="index" 
-            class="image-preview"
-          >
-            <img :src="img" />
+          <div v-for="(img, index) in uploadedImages" :key="`${img}-${index}`" class="image-preview">
+            <img :src="img" alt="宠物照片" />
             <button class="remove-btn" @click="removeImage(index)">×</button>
           </div>
-          
-          <div 
-            class="upload-btn"
-            @click="triggerUpload"
-          >
+
+          <div class="upload-btn" @click="triggerUpload">
             <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <line x1="12" y1="8" x2="12" y2="16"/>
-              <line x1="8" y1="12" x2="16" y2="12"/>
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <line x1="12" y1="8" x2="12" y2="16" />
+              <line x1="8" y1="12" x2="16" y2="12" />
             </svg>
             <span class="upload-text">添加图片</span>
             <span class="upload-hint">已上传 {{ uploadedImages.length }} 张</span>
           </div>
-          
-          <input 
-            ref="fileInput" 
-            type="file" 
-            accept="image/jpeg,image/png" 
-            multiple 
+
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/jpeg,image/png"
+            multiple
             style="display: none"
             @change="handleFileChange"
           />
         </div>
-        <p class="upload-tip">支持 JPG/PNG 格式</p>
+        <p class="upload-tip">支持 JPG / PNG。上传后系统会自动识别宠物种类和品种，辅助填写信息。</p>
+
+        <div v-if="aiRecognizing" class="ai-banner ai-loading">
+          正在识别图片中的宠物信息...
+        </div>
+        <div v-else-if="aiRecognitionMessage" class="ai-banner">
+          {{ aiRecognitionMessage }}
+        </div>
+        <div v-else-if="aiRecognitionError" class="ai-banner ai-error">
+          {{ aiRecognitionError }}
+        </div>
       </div>
 
-      <!-- 基本信息 -->
       <div class="form-section">
         <div class="form-row">
           <label class="form-label">
             <span class="required">*</span>
             宠物名称
           </label>
-          <input 
-            v-model="form.petName"
-            type="text" 
-            class="form-input"
-            placeholder="请输入宠物名字"
-          />
+          <input v-model="form.petName" type="text" class="form-input" placeholder="请输入宠物名称" />
         </div>
 
         <div class="form-row">
@@ -78,33 +72,30 @@
             性别
           </label>
           <div class="select-wrapper">
-            <div 
-              class="custom-select"
-              @click="showGenderDropdown = !showGenderDropdown"
-            >
-              <span :class="{ 'placeholder': !form.gender }">
+            <div class="custom-select" @click="showGenderDropdown = !showGenderDropdown">
+              <span :class="{ placeholder: !form.gender }">
                 {{ form.gender || '请选择性别' }}
               </span>
-              <svg 
+              <svg
                 class="arrow-icon"
-                :class="{ 'rotate': showGenderDropdown }"
-                viewBox="0 0 24 24" 
-                width="16" 
-                height="16" 
-                fill="none" 
-                stroke="currentColor" 
+                :class="{ rotate: showGenderDropdown }"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
                 stroke-width="2"
               >
-                <polyline points="6 9 12 15 18 9"/>
+                <polyline points="6 9 12 15 18 9" />
               </svg>
             </div>
-            
+
             <div v-show="showGenderDropdown" class="dropdown-menu">
-              <div 
-                v-for="gender in genders" 
+              <div
+                v-for="gender in genders"
                 :key="gender"
                 class="dropdown-item"
-                :class="{ 'active': form.gender === gender }"
+                :class="{ active: form.gender === gender }"
                 @click="selectGender(gender)"
               >
                 {{ gender }}
@@ -116,88 +107,78 @@
         <div class="form-row">
           <label class="form-label">
             <span class="required">*</span>
-            种类
+            宠物种类 / 品种
           </label>
-          <input 
+          <input
             v-model="form.breed"
-            type="text" 
+            type="text"
             class="form-input"
-            placeholder="请填写宠物种类，如：金毛寻回犬、布偶猫"
+            placeholder="例如：猫 - 布偶猫，狗 - 柯基犬"
           />
+          <p class="field-tip">系统会自动根据上传图片回填，你也可以自行修改。</p>
         </div>
       </div>
 
-      <!-- 丢失信息 -->
       <div class="form-section">
         <div class="section-title">丢失信息</div>
-        
-        <!-- 丢失时间 - 支持手写和选择 -->
+
         <div class="form-row datetime-row">
           <label class="form-label">
             <span class="required">*</span>
             丢失时间
           </label>
-          <div class="datetime-input-wrapper" ref="datetimeWrapperRef">
-            <input 
+          <div class="datetime-input-wrapper">
+            <input
               v-model="form.lostTime"
-              type="text" 
+              type="text"
               class="form-input datetime-input"
-              placeholder="请输入丢失时间，如：2026年4月15日 下午3点"
+              placeholder="请输入丢失时间，例如：2026年5月15日下午3点"
               @focus="showDatetimePicker = true"
             />
-            <button 
-              class="datetime-btn" 
-              @click="toggleDatetimePicker" 
-              :class="{ 'active': showDatetimePicker }"
-              title="选择时间"
-            >
+            <button class="datetime-btn" @click="toggleDatetimePicker" :class="{ active: showDatetimePicker }" title="选择时间">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
               </svg>
             </button>
-            
-            <!-- 自定义日期时间选择器弹窗 - 显示在输入框下方 -->
+
             <div v-show="showDatetimePicker" class="datetime-picker-popup">
               <div class="picker-header">
                 <button class="nav-btn" @click="changeMonth(-1)">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="15 18 9 12 15 6"/>
+                    <polyline points="15 18 9 12 15 6" />
                   </svg>
                 </button>
                 <span class="current-month">{{ currentYear }}年{{ currentMonth + 1 }}月</span>
                 <button class="nav-btn" @click="changeMonth(1)">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="9 18 15 12 9 6"/>
+                    <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </button>
               </div>
-              
-              <!-- 星期标题 -->
+
               <div class="weekdays-header">
                 <span v-for="day in weekDays" :key="day" class="weekday-label">{{ day }}</span>
               </div>
-              
-              <!-- 日期网格 - CSS Grid 布局 -->
+
               <div class="days-grid">
-                <div 
-                  v-for="(day, index) in calendarDays" 
+                <div
+                  v-for="(day, index) in calendarDays"
                   :key="index"
                   class="day-cell"
-                  :class="{ 
-                    'other-month': !day.isCurrentMonth, 
-                    'selected': isSelectedDate(day),
-                    'today': isToday(day)
+                  :class="{
+                    'other-month': !day.isCurrentMonth,
+                    selected: isSelectedDate(day),
+                    today: isToday(day)
                   }"
                   @click="selectDate(day)"
                 >
                   {{ day.date }}
                 </div>
               </div>
-              
-              <!-- 时间选择 -->
+
               <div class="time-section">
                 <div class="time-label">时间</div>
                 <div class="time-inputs">
@@ -210,8 +191,7 @@
                   </select>
                 </div>
               </div>
-              
-              <!-- 底部按钮 -->
+
               <div class="picker-footer">
                 <button class="picker-btn btn-today" @click="setToday">今天</button>
                 <button class="picker-btn btn-confirm" @click="confirmDatetime">确定</button>
@@ -219,7 +199,7 @@
               </div>
             </div>
           </div>
-          <p class="input-hint">可手动输入，或点击右侧图标选择时间</p>
+          <p class="input-hint">可以手动输入，也可以点击右侧图标快速选择。</p>
         </div>
 
         <div class="form-row">
@@ -228,16 +208,11 @@
             丢失地点
           </label>
           <div class="location-input-wrapper">
-            <input 
-              v-model="form.lostLocation"
-              type="text" 
-              class="form-input"
-              placeholder="请输入丢失地点"
-            />
+            <input v-model="form.lostLocation" type="text" class="form-input address-input" placeholder="请输入丢失地点" />
             <button class="location-btn" @click="getLocation" :disabled="isLocating">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
               </svg>
               <span>{{ isLocating ? '定位中...' : '定位' }}</span>
             </button>
@@ -249,30 +224,19 @@
             <span class="required">*</span>
             所在城市
           </label>
-          <input 
-            v-model="form.city"
-            type="text" 
-            class="form-input"
-            placeholder="请输入城市名称"
-          />
+          <input v-model="form.city" type="text" class="form-input" placeholder="请输入城市名称" />
         </div>
       </div>
 
-      <!-- 联系方式 -->
       <div class="form-section">
         <div class="section-title">联系方式</div>
-        
+
         <div class="form-row">
           <label class="form-label">
             <span class="required">*</span>
             联系人
           </label>
-          <input 
-            v-model="form.contactName"
-            type="text" 
-            class="form-input"
-            placeholder="请输入联系人姓名"
-          />
+          <input v-model="form.contactName" type="text" class="form-input" placeholder="请输入联系人姓名" />
         </div>
 
         <div class="form-row">
@@ -280,45 +244,29 @@
             <span class="required">*</span>
             联系电话
           </label>
-          <input 
-            v-model="form.contactPhone"
-            type="tel" 
-            class="form-input"
-            placeholder="请输入手机号码"
-          />
+          <input v-model="form.contactPhone" type="tel" class="form-input" placeholder="请输入手机号" />
         </div>
 
         <div class="form-row">
           <label class="form-label">微信号</label>
-          <input 
-            v-model="form.contactWechat"
-            type="text" 
-            class="form-input"
-            placeholder="请输入微信号"
-          />
+          <input v-model="form.contactWechat" type="text" class="form-input" placeholder="请输入微信号" />
         </div>
       </div>
 
-      <!-- 补充描述 -->
       <div class="form-section">
         <div class="section-title">补充描述</div>
-        <textarea 
+        <textarea
           v-model="form.description"
           class="form-textarea"
-          placeholder="描述宠物的特征、丢失时的状况、是否有佩戴饰品等..."
+          placeholder="可以补充毛色、体型、是否佩戴项圈或芯片等信息"
           rows="4"
         ></textarea>
       </div>
     </div>
 
-    <!-- 底部操作栏 -->
     <div class="footer-bar">
       <button class="draft-btn" @click="saveDraft">存草稿</button>
-      <button 
-        class="submit-btn" 
-        :disabled="!isFormValid"
-        @click="submitForm"
-      >
+      <button class="submit-btn" :disabled="!isFormValid" @click="submitForm">
         {{ isEditMode ? '保存修改' : '立即发布' }}
       </button>
     </div>
@@ -326,17 +274,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 // @ts-ignore
 import request from '../api/request.js'
+import { recognizePetImage, type AiRecognitionResult } from '../utils/aiRecognition'
+
+type CalendarDay = {
+  date: number
+  isCurrentMonth: boolean
+  fullDate: Date
+}
 
 const router = useRouter()
 const route = useRoute()
 const editingPostId = ref<number | null>(null)
 const isEditMode = computed(() => editingPostId.value !== null)
 
-// ============ 表单数据 ============
 const form = reactive({
   petName: '',
   gender: '',
@@ -350,22 +304,34 @@ const form = reactive({
   description: ''
 })
 
-// ============ 性别选择 ============
 const genders = ['公', '母', '不详']
 const showGenderDropdown = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+const uploadedImages = ref<string[]>([])
+const aiRecognizing = ref(false)
+const aiRecognitionMessage = ref('')
+const aiRecognitionError = ref('')
+const latestRecognition = ref<AiRecognitionResult | null>(null)
+
+const showDatetimePicker = ref(false)
+const currentDate = ref(new Date())
+const currentYear = computed(() => currentDate.value.getFullYear())
+const currentMonth = computed(() => currentDate.value.getMonth())
+const selectedDate = ref<Date | null>(null)
+const selectedHour = ref(new Date().getHours())
+const selectedMinute = ref(new Date().getMinutes())
+const weekDays = ['日', '一', '二', '三', '四', '五', '六']
 
 const selectGender = (gender: string) => {
   form.gender = gender
   showGenderDropdown.value = false
 }
 
-// 点击外部关闭下拉
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement
   if (!target.closest('.select-wrapper')) {
     showGenderDropdown.value = false
   }
-  // 关闭时间选择器
   if (!target.closest('.datetime-input-wrapper')) {
     showDatetimePicker.value = false
   }
@@ -379,170 +345,71 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-// ============ 自定义日期时间选择器 ============
-const showDatetimePicker = ref(false)
-const datetimeWrapperRef = ref<HTMLElement | null>(null)
-
-// 当前显示的月份
-const currentDate = ref(new Date())
-const currentYear = computed(() => currentDate.value.getFullYear())
-const currentMonth = computed(() => currentDate.value.getMonth())
-
-// 选中的日期和时间
-const selectedDate = ref<Date | null>(null)
-const selectedHour = ref(new Date().getHours())
-const selectedMinute = ref(new Date().getMinutes())
-
-const weekDays = ['日', '一', '二', '三', '四', '五', '六']
-
-// 计算日历天数
-const calendarDays = computed(() => {
-  const year = currentYear.value
-  const month = currentMonth.value
-  
-  // 当月第一天
-  const firstDayOfMonth = new Date(year, month, 1)
-  // 当月最后一天
-  const lastDayOfMonth = new Date(year, month + 1, 0)
-  
-  // 当月第一天是星期几（0=周日）
-  const firstDayWeekday = firstDayOfMonth.getDay()
-  // 当月总天数
-  const daysInMonth = lastDayOfMonth.getDate()
-  
-  const days = []
-  
-  // 上个月的日期（填充前面的空格）
-  const prevMonthLastDay = new Date(year, month, 0).getDate()
-  for (let i = firstDayWeekday - 1; i >= 0; i--) {
-    days.push({
-      date: prevMonthLastDay - i,
-      isCurrentMonth: false,
-      fullDate: new Date(year, month - 1, prevMonthLastDay - i)
-    })
-  }
-  
-  // 当月日期
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push({
-      date: i,
-      isCurrentMonth: true,
-      fullDate: new Date(year, month, i)
-    })
-  }
-  
-  // 下个月的日期（填充后面的空格，使总数为42个，即6行）
-  const remainingDays = 42 - days.length
-  for (let i = 1; i <= remainingDays; i++) {
-    days.push({
-      date: i,
-      isCurrentMonth: false,
-      fullDate: new Date(year, month + 1, i)
-    })
-  }
-  
-  return days
-})
-
-// 切换月份
-const changeMonth = (delta: number) => {
-  currentDate.value = new Date(currentYear.value, currentMonth.value + delta, 1)
-}
-
-// 切换时间选择器显示
-const toggleDatetimePicker = () => {
-  showDatetimePicker.value = !showDatetimePicker.value
-}
-
-// 选择日期
-const selectDate = (day: { date: number, isCurrentMonth: boolean, fullDate: Date }) => {
-  selectedDate.value = day.fullDate
-  // 如果选择的不是当前月，切换到那个月
-  if (!day.isCurrentMonth) {
-    currentDate.value = new Date(day.fullDate.getFullYear(), day.fullDate.getMonth(), 1)
-  }
-}
-
-// 判断是否选中
-const isSelectedDate = (day: { date: number, isCurrentMonth: boolean, fullDate: Date }) => {
-  if (!selectedDate.value) return false
-  return day.fullDate.toDateString() === selectedDate.value.toDateString()
-}
-
-// 判断是否是今天
-const isToday = (day: { date: number, isCurrentMonth: boolean, fullDate: Date }) => {
-  const today = new Date()
-  return day.fullDate.toDateString() === today.toDateString()
-}
-
-// 设置今天
-const setToday = () => {
-  const today = new Date()
-  selectedDate.value = today
-  selectedHour.value = today.getHours()
-  selectedMinute.value = today.getMinutes()
-  currentDate.value = new Date(today.getFullYear(), today.getMonth(), 1)
-}
-
-// 确认选择
-const confirmDatetime = () => {
-  if (selectedDate.value) {
-    const date = new Date(selectedDate.value)
-    date.setHours(selectedHour.value)
-    date.setMinutes(selectedMinute.value)
-    form.lostTime = formatDatetime(date)
-  }
-  showDatetimePicker.value = false
-}
-
-// 格式化日期时间为中文格式
-const formatDatetime = (date: Date): string => {
-  const year = date.getFullYear()
-  const month = date.getMonth() + 1
-  const day = date.getDate()
-  const hours = date.getHours()
-  const minutes = date.getMinutes()
-  
-  // 格式化时间段
-  let timePeriod = ''
-  if (hours >= 0 && hours < 6) timePeriod = '凌晨'
-  else if (hours >= 6 && hours < 12) timePeriod = '上午'
-  else if (hours >= 12 && hours < 14) timePeriod = '中午'
-  else if (hours >= 14 && hours < 18) timePeriod = '下午'
-  else timePeriod = '晚上'
-  
-  const timeStr = minutes === 0 ? `${timePeriod}${hours}点` : `${timePeriod}${hours}点${minutes}分`
-  
-  return `${year}年${month}月${day}日 ${timeStr}`
-}
-
-// ============ 图片上传 ============
-const fileInput = ref<HTMLInputElement | null>(null)
-const uploadedImages = ref<string[]>([])
-
 const triggerUpload = () => {
   fileInput.value?.click()
 }
 
-const handleFileChange = (e: Event) => {
-  const target = e.target as HTMLInputElement
-  const files = target.files
-  
-  if (!files) return
-  
-  Array.from(files).forEach(file => {
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = (e) => {
-      uploadedImages.value.push(e.target?.result as string)
-    }
+    reader.onload = e => resolve((e.target?.result as string) || '')
+    reader.onerror = () => reject(new Error('图片读取失败'))
     reader.readAsDataURL(file)
   })
-  
-  target.value = ''
+
+const formatRecognitionText = (result: AiRecognitionResult) => {
+  const petType = result.petTypeCn || result.petType || '宠物'
+  const breed = result.breedCn || result.breed || '未知品种'
+  return `${petType} - ${breed}`
+}
+
+const autoRecognize = async (file: File) => {
+  aiRecognizing.value = true
+  aiRecognitionError.value = ''
+  aiRecognitionMessage.value = ''
+  try {
+    const result = await recognizePetImage(file)
+    latestRecognition.value = result
+    form.breed = formatRecognitionText(result)
+    aiRecognitionMessage.value = `已自动识别为“${form.breed}”，置信度 ${(result.confidence * 100).toFixed(1)}%，你仍可手动调整。`
+  } catch (error: any) {
+    latestRecognition.value = null
+    aiRecognitionError.value = error?.message || 'AI识别失败，请稍后重试'
+  } finally {
+    aiRecognizing.value = false
+  }
+}
+
+const handleFileChange = async (e: Event) => {
+  const target = e.target as HTMLInputElement
+  const files = target.files
+  if (!files || files.length === 0) return
+
+  const list = Array.from(files)
+  const firstFile = list[0]
+  if (!firstFile) {
+    target.value = ''
+    return
+  }
+  try {
+    const previews = await Promise.all(list.map(readFileAsDataUrl))
+    uploadedImages.value.push(...previews)
+    await autoRecognize(firstFile)
+  } catch (error) {
+    console.error('处理图片失败', error)
+    alert('图片处理失败，请重试')
+  } finally {
+    target.value = ''
+  }
 }
 
 const removeImage = (index: number) => {
   uploadedImages.value.splice(index, 1)
+  if (uploadedImages.value.length === 0) {
+    latestRecognition.value = null
+    aiRecognitionMessage.value = ''
+    aiRecognitionError.value = ''
+  }
 }
 
 const dataUrlToFile = (dataUrl: string, filename: string): File => {
@@ -562,16 +429,16 @@ const dataUrlToFile = (dataUrl: string, filename: string): File => {
   return new File([array], filename, { type: mime })
 }
 
+const isRemoteUrl = (value: string) => /^https?:\/\//.test(value)
+
 const resolveImageUrls = async (): Promise<string[]> => {
-  const existingUrls = uploadedImages.value.filter(img => /^https?:\/\//.test(img))
-  const newImages = uploadedImages.value.filter(img => !/^https?:\/\//.test(img))
+  const existingUrls = uploadedImages.value.filter(isRemoteUrl)
+  const newImages = uploadedImages.value.filter(img => !isRemoteUrl(img))
   if (newImages.length === 0) {
     return existingUrls
   }
 
-  const files = newImages.map((img, index) =>
-    dataUrlToFile(img, `lost-${Date.now()}-${index}.png`)
-  )
+  const files = newImages.map((img, index) => dataUrlToFile(img, `lost-${Date.now()}-${index}.png`))
   const formData = new FormData()
   files.forEach(file => formData.append('files', file))
   const res = await request.post('/api/upload/images', formData, {
@@ -610,45 +477,142 @@ const loadPostForEdit = async (postId: number) => {
   }
 }
 
-// ============ 定位功能 ============
+const calendarDays = computed<CalendarDay[]>(() => {
+  const year = currentYear.value
+  const month = currentMonth.value
+  const firstDayOfMonth = new Date(year, month, 1)
+  const lastDayOfMonth = new Date(year, month + 1, 0)
+  const firstDayWeekday = firstDayOfMonth.getDay()
+  const daysInMonth = lastDayOfMonth.getDate()
+
+  const days: CalendarDay[] = []
+  const prevMonthLastDay = new Date(year, month, 0).getDate()
+
+  for (let i = firstDayWeekday - 1; i >= 0; i--) {
+    days.push({
+      date: prevMonthLastDay - i,
+      isCurrentMonth: false,
+      fullDate: new Date(year, month - 1, prevMonthLastDay - i)
+    })
+  }
+
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push({
+      date: i,
+      isCurrentMonth: true,
+      fullDate: new Date(year, month, i)
+    })
+  }
+
+  const remainingDays = 42 - days.length
+  for (let i = 1; i <= remainingDays; i++) {
+    days.push({
+      date: i,
+      isCurrentMonth: false,
+      fullDate: new Date(year, month + 1, i)
+    })
+  }
+
+  return days
+})
+
+const changeMonth = (delta: number) => {
+  currentDate.value = new Date(currentYear.value, currentMonth.value + delta, 1)
+}
+
+const toggleDatetimePicker = () => {
+  showDatetimePicker.value = !showDatetimePicker.value
+}
+
+const selectDate = (day: CalendarDay) => {
+  selectedDate.value = day.fullDate
+  if (!day.isCurrentMonth) {
+    currentDate.value = new Date(day.fullDate.getFullYear(), day.fullDate.getMonth(), 1)
+  }
+}
+
+const isSelectedDate = (day: CalendarDay) => {
+  if (!selectedDate.value) return false
+  return day.fullDate.toDateString() === selectedDate.value.toDateString()
+}
+
+const isToday = (day: CalendarDay) => {
+  return day.fullDate.toDateString() === new Date().toDateString()
+}
+
+const setToday = () => {
+  const today = new Date()
+  selectedDate.value = today
+  selectedHour.value = today.getHours()
+  selectedMinute.value = today.getMinutes()
+  currentDate.value = new Date(today.getFullYear(), today.getMonth(), 1)
+}
+
+const formatDatetime = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const hours = date.getHours()
+  const minutes = date.getMinutes()
+
+  let timePeriod = ''
+  if (hours < 6) timePeriod = '凌晨'
+  else if (hours < 12) timePeriod = '上午'
+  else if (hours < 14) timePeriod = '中午'
+  else if (hours < 18) timePeriod = '下午'
+  else timePeriod = '晚上'
+
+  const timeText = minutes === 0 ? `${timePeriod}${hours}点` : `${timePeriod}${hours}点${minutes}分`
+  return `${year}年${month}月${day}日${timeText}`
+}
+
+const confirmDatetime = () => {
+  if (selectedDate.value) {
+    const date = new Date(selectedDate.value)
+    date.setHours(selectedHour.value)
+    date.setMinutes(selectedMinute.value)
+    form.lostTime = formatDatetime(date)
+  }
+  showDatetimePicker.value = false
+}
+
 const isLocating = ref(false)
 
 const getLocation = () => {
   isLocating.value = true
-  
   if (!navigator.geolocation) {
-    alert('您的浏览器不支持地理定位')
+    alert('当前浏览器不支持定位')
     isLocating.value = false
     return
   }
-  
+
   navigator.geolocation.getCurrentPosition(
-    (position) => {
+    () => {
       setTimeout(() => {
-        form.lostLocation = '当前定位位置'
-        form.city = '北京市'
+        form.lostLocation = form.lostLocation || '当前位置附近'
+        form.city = form.city || '北京市'
         isLocating.value = false
       }, 1000)
     },
-    (error) => {
-      alert('定位失败，请手动输入地址')
+    () => {
+      alert('定位失败，请手动填写地址')
       isLocating.value = false
     }
   )
 }
 
-// ============ 表单验证 ============
 const isFormValid = computed(() => {
-  return form.petName.trim() &&
-         form.gender && 
-         form.breed.trim() && 
-         form.lostTime.trim() &&
-         form.lostLocation.trim() &&
-         form.city.trim() &&
-         uploadedImages.value.length > 0
+  return (
+    !!form.petName.trim() &&
+    !!form.gender &&
+    !!form.breed.trim() &&
+    !!form.lostTime.trim() &&
+    !!form.lostLocation.trim() &&
+    !!form.city.trim() &&
+    uploadedImages.value.length > 0
+  )
 })
 
-// ============ 操作按钮 ============
 const goBack = () => {
   router.back()
 }
@@ -657,6 +621,7 @@ const saveDraft = () => {
   const draft = {
     ...form,
     images: uploadedImages.value,
+    latestRecognition: latestRecognition.value,
     savedAt: new Date().toISOString()
   }
   localStorage.setItem('lostDraft', JSON.stringify(draft))
@@ -687,19 +652,20 @@ const submitForm = async () => {
     contactPhone: form.contactPhone,
     contactWechat: form.contactWechat,
     description: form.description,
-    images: imageUrls,
+    images: imageUrls
   }
 
   try {
     const res = isEditMode.value
       ? await request.put(`/api/lost/${editingPostId.value}`, payload)
       : await request.post('/api/lost/publish', payload)
+
     if (res?.code === 200) {
-      alert(isEditMode.value ? '更新成功！' : '发布成功！')
+      alert(isEditMode.value ? '更新成功' : '发布成功')
       router.push('/personal')
       return
     }
-    alert(res?.message || (isEditMode.value ? '更新失败，请稍后再试' : '发布失败，请稍后再试'))
+    alert(res?.message || (isEditMode.value ? '更新失败，请稍后重试' : '发布失败，请稍后重试'))
   } catch (error) {
     console.error('保存寻宠帖子失败', error)
     alert(isEditMode.value ? '更新失败，请检查网络或登录状态' : '发布失败，请检查网络或登录状态')
@@ -723,7 +689,6 @@ onMounted(async () => {
   padding-bottom: 80px;
 }
 
-/* ========== 顶部导航 ========== */
 .header {
   position: sticky;
   top: 0;
@@ -733,7 +698,7 @@ onMounted(async () => {
   justify-content: space-between;
   padding: 12px 16px;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .back-btn {
@@ -746,11 +711,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  background: #e8e8e8;
 }
 
 .page-title {
@@ -763,15 +723,10 @@ onMounted(async () => {
   margin: 0;
 }
 
-.page-title .icon {
-  font-size: 22px;
-}
-
 .placeholder {
   width: 36px;
 }
 
-/* ========== 表单容器 ========== */
 .form-container {
   padding: 16px;
   display: flex;
@@ -783,7 +738,7 @@ onMounted(async () => {
   background: #fff;
   border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .section-title {
@@ -791,12 +746,8 @@ onMounted(async () => {
   font-weight: 600;
   color: #333;
   margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
-/* ========== 图片上传 ========== */
 .upload-area {
   display: flex;
   flex-wrap: wrap;
@@ -825,19 +776,10 @@ onMounted(async () => {
   width: 22px;
   height: 22px;
   border: none;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   color: #fff;
   border-radius: 50%;
-  font-size: 14px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.remove-btn:hover {
-  background: rgba(0,0,0,0.7);
 }
 
 .upload-btn {
@@ -850,7 +792,6 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
   color: #999;
 }
 
@@ -865,19 +806,42 @@ onMounted(async () => {
   margin-top: 6px;
 }
 
-.upload-hint {
-  font-size: 11px;
-  color: #bbb;
-  margin-top: 2px;
-}
-
-.upload-tip {
+.upload-hint,
+.upload-tip,
+.field-tip,
+.input-hint {
   font-size: 12px;
   color: #999;
+}
+
+.upload-tip,
+.input-hint {
   margin: 12px 0 0;
 }
 
-/* ========== 表单行 ========== */
+.field-tip {
+  margin: 6px 0 0;
+}
+
+.ai-banner {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #edf7ff;
+  color: #2374a7;
+  font-size: 13px;
+}
+
+.ai-loading {
+  background: #f7fbff;
+  color: #4d8db7;
+}
+
+.ai-error {
+  background: #fff4f4;
+  color: #d35f5f;
+}
+
 .form-row {
   display: flex;
   flex-direction: column;
@@ -889,26 +853,19 @@ onMounted(async () => {
   margin-bottom: 0;
 }
 
-.datetime-row {
-  position: relative;
-}
-
 .form-label {
   font-size: 14px;
   color: #555;
   font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 2px;
 }
 
 .required {
   color: #ff6b6b;
-  font-weight: 600;
 }
 
-/* ========== 输入框 ========== */
-.form-input {
+.form-input,
+.custom-select,
+.time-select {
   height: 44px;
   padding: 0 14px;
   border: 1px solid #e0e0e0;
@@ -916,53 +873,101 @@ onMounted(async () => {
   font-size: 14px;
   color: #333;
   background: #fafafa;
-  transition: all 0.2s;
   outline: none;
+  transition: all 0.2s;
 }
 
-.form-input:focus {
+.form-input:focus,
+.time-select:focus,
+.custom-select:hover {
   border-color: #00a8e8;
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(0,168,232,0.1);
 }
 
-.form-input::placeholder {
+.address-input {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-wrapper {
+  position: relative;
+}
+
+.custom-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.custom-select .placeholder {
   color: #bbb;
 }
 
-/* ========== 丢失时间输入框 ========== */
-.datetime-input-wrapper {
+.arrow-icon {
+  color: #999;
+  transition: transform 0.2s;
+}
+
+.arrow-icon.rotate {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #555;
+  cursor: pointer;
+}
+
+.dropdown-item:hover,
+.dropdown-item.active {
+  background: #f0f9ff;
+  color: #00a8e8;
+}
+
+.datetime-input-wrapper,
+.location-input-wrapper {
   display: flex;
   gap: 10px;
   position: relative;
 }
 
-.datetime-input-wrapper .form-input {
+.datetime-input-wrapper .form-input,
+.location-input-wrapper .form-input {
   flex: 1;
+  min-width: 0;
 }
 
-.datetime-input {
-  font-size: 14px;
-}
-
-.datetime-btn {
-  width: 44px;
+.datetime-btn,
+.location-btn {
   height: 44px;
+  padding: 0 16px;
   border: 1px solid #e0e0e0;
   border-radius: 10px;
   background: #fff;
   color: #00a8e8;
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.datetime-btn:hover {
-  background: #f0f9ff;
-  border-color: #00a8e8;
+  gap: 6px;
 }
 
 .datetime-btn.active {
@@ -971,13 +976,11 @@ onMounted(async () => {
   border-color: #00a8e8;
 }
 
-.input-hint {
-  font-size: 12px;
-  color: #999;
-  margin: 4px 0 0;
+.location-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-/* ========== 自定义日期时间选择器弹窗 ========== */
 .datetime-picker-popup {
   position: absolute;
   top: calc(100% + 8px);
@@ -985,40 +988,19 @@ onMounted(async () => {
   width: 320px;
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   padding: 16px;
-  animation: slideDown 0.2s ease;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 弹窗箭头 */
-.datetime-picker-popup::before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 20px;
-  width: 0;
-  height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 6px solid #fff;
-}
-
-/* 选择器头部 */
-.picker-header {
+.picker-header,
+.picker-footer,
+.time-inputs {
   display: flex;
   align-items: center;
+}
+
+.picker-header {
   justify-content: space-between;
   margin-bottom: 12px;
   padding-bottom: 12px;
@@ -1032,16 +1014,6 @@ onMounted(async () => {
   background: #f5f5f5;
   border-radius: 8px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  color: #666;
-}
-
-.nav-btn:hover {
-  background: #e8e8e8;
-  color: #333;
 }
 
 .current-month {
@@ -1050,11 +1022,14 @@ onMounted(async () => {
   color: #333;
 }
 
-/* 星期标题 */
-.weekdays-header {
+.weekdays-header,
+.days-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
+}
+
+.weekdays-header {
   margin-bottom: 8px;
 }
 
@@ -1062,20 +1037,16 @@ onMounted(async () => {
   text-align: center;
   font-size: 12px;
   color: #999;
-  font-weight: 500;
   padding: 4px;
 }
 
-/* 日期网格 - CSS Grid 布局 */
 .days-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
   margin-bottom: 16px;
 }
 
 .day-cell {
   aspect-ratio: 1;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1083,8 +1054,6 @@ onMounted(async () => {
   color: #333;
   cursor: pointer;
   border-radius: 8px;
-  transition: all 0.2s;
-  min-height: 36px;
 }
 
 .day-cell:hover {
@@ -1105,7 +1074,6 @@ onMounted(async () => {
   border: 2px solid #00a8e8;
 }
 
-/* 时间选择 */
 .time-section {
   padding: 12px;
   background: #f8f9fa;
@@ -1121,37 +1089,18 @@ onMounted(async () => {
 }
 
 .time-inputs {
-  display: flex;
-  align-items: center;
   gap: 8px;
 }
 
 .time-select {
   flex: 1;
-  height: 36px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 0 8px;
-  font-size: 14px;
-  color: #333;
-  background: #fff;
-  outline: none;
-  cursor: pointer;
-}
-
-.time-select:focus {
-  border-color: #00a8e8;
 }
 
 .time-separator {
-  font-size: 14px;
-  color: #666;
   font-weight: 600;
 }
 
-/* 底部按钮 */
 .picker-footer {
-  display: flex;
   gap: 8px;
   justify-content: flex-end;
 }
@@ -1162,8 +1111,6 @@ onMounted(async () => {
   border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
 }
 
 .btn-today {
@@ -1171,17 +1118,9 @@ onMounted(async () => {
   color: #666;
 }
 
-.btn-today:hover {
-  background: #e8e8e8;
-}
-
 .btn-confirm {
   background: #00a8e8;
   color: #fff;
-}
-
-.btn-confirm:hover {
-  background: #0090c9;
 }
 
 .btn-cancel {
@@ -1189,138 +1128,9 @@ onMounted(async () => {
   color: #999;
 }
 
-.btn-cancel:hover {
-  color: #666;
-}
-
-/* ========== 下拉选择 ========== */
-.select-wrapper {
-  position: relative;
-}
-
-.custom-select {
-  height: 44px;
-  padding: 0 14px;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  background: #fafafa;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 14px;
-  color: #333;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.custom-select:hover {
-  border-color: #00a8e8;
-}
-
-.custom-select span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
-  flex: 1;
-  min-width: 0;
-}
-
-.custom-select .placeholder {
-  color: #bbb;
-}
-
-.arrow-icon {
-  color: #999;
-  transition: transform 0.2s;
-  flex-shrink: 0;
-  margin-left: 8px;
-}
-
-.arrow-icon.rotate {
-  transform: rotate(180deg);
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 50;
-  overflow: hidden;
-  animation: slideDown 0.2s ease;
-}
-
-.dropdown-item {
-  padding: 12px 14px;
-  font-size: 14px;
-  color: #555;
-  cursor: pointer;
-  transition: all 0.15s;
-  border-bottom: 1px solid #f5f5f5;
-  white-space: nowrap;
-}
-
-.dropdown-item:last-child {
-  border-bottom: none;
-}
-
-.dropdown-item:hover {
-  background: #f0f9ff;
-  color: #00a8e8;
-}
-
-.dropdown-item.active {
-  background: #e6f7ff;
-  color: #00a8e8;
-  font-weight: 500;
-}
-
-/* ========== 定位按钮 ========== */
-.location-input-wrapper {
-  display: flex;
-  gap: 10px;
-}
-
-.location-input-wrapper .form-input {
-  flex: 1;
-}
-
-.location-btn {
-  height: 44px;
-  padding: 0 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  background: #fff;
-  color: #00a8e8;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.location-btn:hover:not(:disabled) {
-  background: #f0f9ff;
-  border-color: #00a8e8;
-}
-
-.location-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ========== 文本域 ========== */
 .form-textarea {
   width: 100%;
+  min-height: 100px;
   padding: 12px 14px;
   border: 1px solid #e0e0e0;
   border-radius: 10px;
@@ -1328,9 +1138,7 @@ onMounted(async () => {
   color: #333;
   background: #fafafa;
   resize: vertical;
-  min-height: 100px;
   outline: none;
-  transition: all 0.2s;
   box-sizing: border-box;
   font-family: inherit;
   line-height: 1.6;
@@ -1339,14 +1147,8 @@ onMounted(async () => {
 .form-textarea:focus {
   border-color: #00a8e8;
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(0,168,232,0.1);
 }
 
-.form-textarea::placeholder {
-  color: #bbb;
-}
-
-/* ========== 底部操作栏 ========== */
 .footer-bar {
   position: fixed;
   bottom: 0;
@@ -1357,44 +1159,31 @@ onMounted(async () => {
   border-top: 1px solid #f0f0f0;
   display: flex;
   gap: 12px;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.draft-btn,
+.submit-btn {
+  height: 46px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .draft-btn {
   flex: 1;
-  height: 46px;
   border: 1px solid #e0e0e0;
-  border-radius: 12px;
   background: #fff;
   color: #666;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.draft-btn:hover {
-  background: #f5f5f5;
-  border-color: #d0d0d0;
 }
 
 .submit-btn {
   flex: 2;
-  height: 46px;
   border: none;
-  border-radius: 12px;
   background: linear-gradient(135deg, #00a8e8 0%, #0090c9 100%);
   color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(0,168,232,0.3);
-}
-
-.submit-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,168,232,0.4);
+  box-shadow: 0 4px 12px rgba(0, 168, 232, 0.3);
 }
 
 .submit-btn:disabled {
@@ -1403,22 +1192,21 @@ onMounted(async () => {
   box-shadow: none;
 }
 
-/* ========== 响应式 ========== */
 @media (max-width: 480px) {
   .form-container {
     padding: 12px;
   }
-  
+
   .form-section {
     padding: 16px;
   }
-  
+
   .image-preview,
   .upload-btn {
     width: 80px;
     height: 80px;
   }
-  
+
   .datetime-picker-popup {
     width: 100%;
     left: 0;
