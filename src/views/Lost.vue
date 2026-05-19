@@ -11,8 +11,14 @@
       </p>
     </div>
 
+    <div class="lost-mode-tabs">
+      <button :class="{ active: activeLostMode === 'hall' }" @click="activeLostMode = 'hall'">寻宠大厅</button>
+      <button :class="{ active: activeLostMode === 'ai' }" @click="activeLostMode = 'ai'">AI寻宠</button>
+    </div>
+
     <!-- 筛选栏 + 搜索按钮 - 可固定顶部 -->
     <div
+        v-if="activeLostMode === 'hall'"
         class="filter-search-bar"
         :class="{ 'sticky': isSticky }"
         ref="filterBarRef"
@@ -104,7 +110,7 @@
     </div>
 
     <!-- 宠物卡片列表 -->
-    <div class="pet-cards-container">
+    <div v-if="activeLostMode === 'hall'" class="pet-cards-container">
       <div
           v-for="pet in filteredPets"
           :key="pet.id"
@@ -119,6 +125,9 @@
             <!-- 上方：宠物图片 -->
             <div class="pet-image-wrapper">
               <div v-if="pet.status === 'FOUND'" class="pet-status-badge found-badge">已找回</div>
+              <div v-if="pet.petFaceMatches?.length" class="pet-status-badge match-badge">
+                疑似匹配 {{ pet.petFaceMatches.length }}
+              </div>
               <img :src="pet.image" :data-breed="pet.breed" :data-pet-id="pet.id" class="pet-image" @error="handlePetImageError" />
             </div>
 
@@ -200,6 +209,75 @@
         </div>
       </div>
     </div>
+
+    <section v-else class="ai-lost-section">
+      <div class="ai-lost-card">
+        <div class="ai-lost-header">
+          <div>
+            <h2>AI寻宠</h2>
+            <p>上传拍到的宠物照片，系统会在已建档宠物中查找疑似匹配对象。</p>
+          </div>
+          <button class="publish-link-btn" @click="goToPublish('lost')">发布寻宠启事</button>
+        </div>
+
+        <div class="ai-search-layout">
+          <div class="ai-upload-box" :class="{ 'has-preview': !!aiSearchPreview }" @click="chooseAiSearchImage">
+            <img v-if="aiSearchPreview" :src="aiSearchPreview" alt="待检索宠物" />
+            <div v-else class="ai-upload-placeholder">
+              <div class="ai-upload-icon">+</div>
+              <strong>上传寻宠照片</strong>
+              <span>支持 JPG / PNG</span>
+            </div>
+            <input
+              ref="aiSearchInputRef"
+              type="file"
+              accept="image/jpeg,image/png"
+              hidden
+              @change="handleAiSearchFileChange"
+            />
+          </div>
+
+          <div class="ai-search-panel">
+            <div class="ai-search-copy">
+              <h3>先检索，再发布</h3>
+              <p>如果照片中的宠物已经在系统建档，可以直接查看疑似档案和主人联系方式；如果没有匹配，再发布寻宠启事。</p>
+            </div>
+            <button class="ai-search-btn" :disabled="!aiSearchFile || aiSearching" @click="runAiLostSearch">
+              {{ aiSearching ? '检索中...' : '开始 AI 寻宠' }}
+            </button>
+            <button v-if="aiSearchPreview" class="ai-clear-btn" @click="clearAiSearch">重新选择图片</button>
+            <div v-if="aiSearchError" class="ai-error">{{ aiSearchError }}</div>
+          </div>
+        </div>
+
+        <div v-if="aiSearchResults.length" class="ai-match-results">
+          <div class="ai-result-title">
+            <h3>疑似匹配</h3>
+            <span>按相似度排序</span>
+          </div>
+          <div v-for="match in aiSearchResults" :key="match.petId" class="ai-match-card" @click="openMatchDetail(match)">
+            <img :src="normalizePetImage(match.avatar, match.breed)" :data-breed="match.breed" @error="handleAiMatchImageError" />
+            <div class="ai-match-main">
+              <div class="ai-match-name">
+                <strong>{{ match.petName }}</strong>
+                <span>{{ match.petTypeDesc || getPetTypeDesc(match.petType) }}</span>
+              </div>
+              <p>{{ match.breed || '未知品种' }} · {{ match.gender || '性别未知' }}</p>
+              <p v-if="match.ownerName || match.ownerPhone">主人：{{ match.ownerName || '未知' }} {{ match.ownerPhone || '' }}</p>
+            </div>
+            <div class="ai-match-actions">
+              <strong>{{ formatPercent(match.similarity) }}</strong>
+              <span>{{ confidenceText(match.confidenceLevel) }}</span>
+              <button @click.stop="openMatchDetail(match)">查看详情</button>
+              <button v-if="match.ownerPhone" @click.stop="copyToClipboard(match.ownerPhone, '主人电话')">复制电话</button>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="aiSearched" class="ai-empty">
+          暂未找到相似度较高的已建档宠物，可以继续发布寻宠启事，让更多人看到。
+        </div>
+      </div>
+    </section>
 
     <!-- ========== 浮动发布按钮 ========== -->
     <div class="fab-wrapper" ref="fabRef">
@@ -284,9 +362,97 @@
               </button>
             </div>
           </div>
+          <div class="contact-item" v-if="selectedPet?.petFaceMatches?.length">
+            <div class="contact-label">系统匹配</div>
+            <div class="match-panel">
+              <div v-for="match in selectedPet.petFaceMatches" :key="match.petId" class="match-line">
+                <div>
+                  <strong>{{ match.petName }}</strong>
+                  <span>{{ match.breed || '未知品种' }}</span>
+                </div>
+                <em>{{ (match.similarity * 100).toFixed(1) }}%</em>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="modal-btn" @click="closeContactModal">知道了</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI匹配结果详情弹窗 -->
+    <div v-if="showMatchDetail && selectedMatch" class="modal-overlay match-detail-overlay" @click="closeMatchDetail">
+      <div class="modal-content match-detail-content" @click.stop>
+        <button class="modal-close" @click="closeMatchDetail">×</button>
+        <div class="match-detail-header">
+          <img
+            :src="normalizePetImage(selectedMatch.avatar, selectedMatch.breed)"
+            class="match-detail-avatar"
+            @error="handleAiMatchImageError"
+          />
+          <div class="match-detail-info">
+            <div class="match-detail-name">
+              <strong>{{ selectedMatch.petName }}</strong>
+              <span class="match-detail-type">{{ selectedMatch.petTypeDesc || getPetTypeDesc(selectedMatch.petType) }}</span>
+            </div>
+            <p class="match-detail-breed">{{ selectedMatch.breed || '未知品种' }} · {{ selectedMatch.gender || '性别未知' }}</p>
+            <div class="match-similarity-tag" :class="selectedMatch.confidenceLevel">
+              相似度 {{ formatPercent(selectedMatch.similarity) }} · {{ confidenceText(selectedMatch.confidenceLevel) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="match-detail-owner" v-if="selectedMatch.ownerName || selectedMatch.ownerPhone">
+          <div class="owner-section-title">主人联系方式</div>
+          <div class="owner-info-row" v-if="selectedMatch.ownerName">
+            <span class="owner-label">姓名</span>
+            <span class="owner-value">{{ selectedMatch.ownerName }}</span>
+          </div>
+          <div class="owner-info-row phone-row" v-if="selectedMatch.ownerPhone" @click="copyToClipboard(selectedMatch.ownerPhone, '主人电话')">
+            <span class="owner-label">电话</span>
+            <span class="owner-value owner-phone-text">{{ selectedMatch.ownerPhone }}</span>
+            <button class="copy-phone-btn">复制电话</button>
+          </div>
+        </div>
+
+        <div class="match-detail-loading" v-if="loadingPetDetail">
+          <div class="mini-spinner"></div>
+          <span>加载详细信息中...</span>
+        </div>
+        <div class="match-pet-extra" v-else-if="petDetail">
+          <div class="extra-row" v-if="petDetail.age">
+            <span class="extra-label">年龄</span>
+            <span class="extra-value">{{ petDetail.age }} 岁</span>
+          </div>
+          <div class="extra-row" v-if="petDetail.weight">
+            <span class="extra-label">体重</span>
+            <span class="extra-value">{{ petDetail.weight }} kg</span>
+          </div>
+          <div class="extra-row" v-if="petDetail.color">
+            <span class="extra-label">花色</span>
+            <span class="extra-value">{{ petDetail.color }}</span>
+          </div>
+          <div class="extra-row" v-if="petDetail.distinctiveFeatures">
+            <span class="extra-label">特征描述</span>
+            <span class="extra-value">{{ petDetail.distinctiveFeatures }}</span>
+          </div>
+          <div class="extra-images" v-if="petDetail.images && petDetail.images.length">
+            <div class="extra-images-title">宠物照片</div>
+            <div class="extra-images-grid">
+              <img
+                v-for="(url, idx) in petDetail.images"
+                :key="idx"
+                :src="normalizePetImage(url, selectedMatch.breed)"
+                class="extra-img"
+                @error="handleAiMatchImageError"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="match-detail-footer">
+          <button class="modal-btn" @click="closeMatchDetail">知道了</button>
         </div>
       </div>
     </div>
@@ -310,6 +476,7 @@ import { useRouter } from 'vue-router'
 // @ts-ignore
 import request from '../api/request.js'
 import { upsertFavorite, removeFavorite, isFavorite, type FavoriteKind } from '../utils/favorites'
+import { getLostPostMatches, searchSimilarPets, type PetFaceMatchResult } from '../utils/aiRecognition'
 
 const router = useRouter()
 const API_BASE_URL = 'http://localhost:8080'
@@ -321,6 +488,7 @@ const SNAKE_PET_IMAGE = getAssetUrl('/snake-pet.svg')
 const DUCK_PET_IMAGE = getAssetUrl('/duck-pet.svg')
 
 const FAVORITE_KIND: FavoriteKind = 'lost'
+const activeLostMode = ref<'hall' | 'ai'>('hall')
 
 // ============ 未登录提示弹窗 ============
 const showLoginTip = ref(false)
@@ -373,6 +541,7 @@ interface LostPet {
   contactName: string
   contactPhone: string
   contactWechat?: string
+  petFaceMatches?: PetFaceMatchResult[]
 }
 
 interface LostPostDTO {
@@ -394,6 +563,75 @@ interface LostPostDTO {
 }
 
 const lostPets = ref<LostPet[]>([])
+
+// ============ AI寻宠 ============
+const aiSearchInputRef = ref<HTMLInputElement | null>(null)
+const aiSearchFile = ref<File | null>(null)
+const aiSearchPreview = ref('')
+const aiSearchResults = ref<PetFaceMatchResult[]>([])
+const aiSearching = ref(false)
+const aiSearched = ref(false)
+const aiSearchError = ref('')
+
+const chooseAiSearchImage = () => {
+  aiSearchInputRef.value?.click()
+}
+
+const handleAiSearchFileChange = (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    aiSearchError.value = '请上传 JPG 或 PNG 格式的图片'
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = e => {
+    aiSearchFile.value = file
+    aiSearchPreview.value = (e.target?.result as string) || ''
+    aiSearchResults.value = []
+    aiSearched.value = false
+    aiSearchError.value = ''
+  }
+  reader.readAsDataURL(file)
+}
+
+const clearAiSearch = () => {
+  aiSearchFile.value = null
+  aiSearchPreview.value = ''
+  aiSearchResults.value = []
+  aiSearched.value = false
+  aiSearchError.value = ''
+  if (aiSearchInputRef.value) aiSearchInputRef.value.value = ''
+}
+
+const runAiLostSearch = async () => {
+  if (!aiSearchFile.value) return
+  aiSearching.value = true
+  aiSearched.value = false
+  aiSearchError.value = ''
+  try {
+    aiSearchResults.value = await searchSimilarPets(aiSearchFile.value, 8)
+    aiSearched.value = true
+  } catch (error: any) {
+    aiSearchError.value = error?.message || 'AI寻宠检索失败，请稍后重试'
+  } finally {
+    aiSearching.value = false
+  }
+}
+
+const formatPercent = (value: number) => `${((value || 0) * 100).toFixed(1)}%`
+
+const confidenceText = (level: string) => {
+  if (level === 'high') return '高置信'
+  if (level === 'medium') return '疑似匹配'
+  return '低相似'
+}
+
+const getPetTypeDesc = (type: number | null | undefined) => {
+  if (type === 0) return '狗'
+  if (type === 1) return '猫'
+  return '其他'
+}
 
 const getFallbackImageByBreed = (breed?: string) => {
   const normalizedBreed = (breed || '').toLowerCase()
@@ -513,6 +751,7 @@ const fetchLostPosts = async () => {
     const records = res?.data?.list ?? res?.data?.records
     if (res?.code === 200 && Array.isArray(records)) {
       lostPets.value = records.map((item: LostPostDTO, index: number) => mapLostDTOToPetWithOrder(item, index))
+      await hydratePetFaceMatches()
     }
   } catch (error) {
     console.warn('加载寻宠帖子失败，使用本地数据兜底', error)
@@ -521,6 +760,16 @@ const fetchLostPosts = async () => {
       p.favorited = isFavorite(FAVORITE_KIND, p.id)
     })
   }
+}
+
+const hydratePetFaceMatches = async () => {
+  await Promise.all(lostPets.value.map(async pet => {
+    try {
+      pet.petFaceMatches = await getLostPostMatches(pet.id)
+    } catch (error) {
+      pet.petFaceMatches = []
+    }
+  }))
 }
 
 // ============ 动态城市列表 - 从宠物数据中提取 ============
@@ -684,6 +933,11 @@ const handlePetImageError = (event: Event) => {
   target.src = fallbackImage
 }
 
+const handleAiMatchImageError = (event: Event) => {
+  const target = event.target as HTMLImageElement
+  target.src = getFallbackImageByBreed(target.dataset.breed)
+}
+
 // 通用复制功能
 const copyToClipboard = (text: string | undefined, label: string) => {
   if (!text) return
@@ -811,6 +1065,41 @@ function resetFilters() {
   activeGender.value = ''
   activeType.value = ''
 }
+
+// ============ AI匹配详情弹窗 ============
+const showMatchDetail = ref(false)
+const selectedMatch = ref<PetFaceMatchResult | null>(null)
+const petDetail = ref<any>(null)
+const loadingPetDetail = ref(false)
+
+const openMatchDetail = async (match: PetFaceMatchResult) => {
+  selectedMatch.value = match
+  showMatchDetail.value = true
+  petDetail.value = null
+  document.body.style.overflow = 'hidden'
+
+  // 尝试加载宠物完整档案（年龄、体重、花色、多图）
+  if (match.petId) {
+    loadingPetDetail.value = true
+    try {
+      const res = await request.get(`/api/pet/${match.petId}`)
+      if (res.code === 200 && res.data) {
+        petDetail.value = res.data
+      }
+    } catch (_) {
+      // 加载失败静默忽略
+    } finally {
+      loadingPetDetail.value = false
+    }
+  }
+}
+
+const closeMatchDetail = () => {
+  showMatchDetail.value = false
+  selectedMatch.value = null
+  petDetail.value = null
+  document.body.style.overflow = ''
+}
 </script>
 
 <style scoped>
@@ -839,6 +1128,316 @@ function resetFilters() {
   line-height: 1.6;
   max-width: 700px;
   margin: 0 auto;
+}
+
+.lost-mode-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto 24px;
+  padding: 0 20px;
+}
+
+.lost-mode-tabs button {
+  min-width: 118px;
+  height: 40px;
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lost-mode-tabs button:hover {
+  border-color: #00a8e8;
+  color: #0088c2;
+}
+
+.lost-mode-tabs button.active {
+  background: #00a8e8;
+  border-color: #00a8e8;
+  color: #fff;
+}
+
+.ai-lost-section {
+  max-width: 1080px;
+  margin: 0 auto 48px;
+  padding: 0 20px;
+}
+
+.ai-lost-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 24px;
+}
+
+.ai-lost-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 18px;
+}
+
+.ai-lost-header h2 {
+  margin: 0 0 8px;
+  color: #1a1a1a;
+  font-size: 26px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.ai-lost-header p,
+.ai-search-copy p {
+  margin: 0;
+  color: #666;
+  line-height: 1.7;
+  text-align: left;
+}
+
+.publish-link-btn {
+  flex: 0 0 auto;
+  height: 40px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 8px;
+  background: #00a8e8;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.publish-link-btn:hover,
+.ai-search-btn:hover {
+  background: #0090c9;
+}
+
+.ai-search-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 380px) 1fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.ai-upload-box {
+  min-height: 260px;
+  border: 1.5px dashed #cfd8e3;
+  border-radius: 12px;
+  background: #f8fbff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.ai-upload-box:hover {
+  border-color: #00a8e8;
+  background: #f4fbff;
+}
+
+.ai-upload-box img {
+  width: 100%;
+  height: 300px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.ai-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #667085;
+}
+
+.ai-upload-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e6f7ff;
+  color: #00a8e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 500;
+}
+
+.ai-search-panel {
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 22px;
+  background: #fcfdff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+
+.ai-search-copy h3 {
+  margin: 0 0 8px;
+  color: #222;
+  font-size: 20px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.ai-search-btn,
+.ai-clear-btn {
+  height: 42px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ai-search-btn {
+  border: none;
+  background: #00a8e8;
+  color: #fff;
+}
+
+.ai-search-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ai-clear-btn {
+  border: 1px solid #dcdcdc;
+  background: #fff;
+  color: #666;
+}
+
+.ai-error {
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.ai-match-results {
+  margin-top: 24px;
+}
+
+.ai-result-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ai-result-title h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #222;
+}
+
+.ai-result-title span {
+  color: #888;
+  font-size: 13px;
+}
+
+.ai-match-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff;
+  margin-top: 10px;
+}
+
+.ai-match-card img {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #e5e7eb;
+  flex: 0 0 auto;
+}
+
+.ai-match-main {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.ai-match-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ai-match-name strong {
+  color: #222;
+  font-size: 17px;
+}
+
+.ai-match-name span {
+  color: #00a8e8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ai-match-main p {
+  margin: 3px 0 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.ai-match-actions {
+  flex: 0 0 auto;
+  min-width: 118px;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.ai-match-actions strong {
+  color: #111827;
+  font-size: 22px;
+}
+
+.ai-match-actions span {
+  color: #666;
+  font-size: 13px;
+}
+
+.ai-match-actions button {
+  border: 1px solid #00a8e8;
+  background: #fff;
+  color: #00a8e8;
+  border-radius: 6px;
+  height: 30px;
+  padding: 0 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ai-empty {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #eef2f7;
+  border-radius: 10px;
+  color: #666;
+  background: #fafafa;
+  text-align: left;
 }
 
 /* ========== 筛选栏样式 - 支持粘性定位 ========== */
@@ -1178,6 +1777,11 @@ function resetFilters() {
 
 .found-badge {
   background: rgba(239, 108, 0, 0.88);
+}
+
+.match-badge {
+  top: 48px;
+  background: rgba(14, 165, 233, 0.9);
 }
 
 .pet-image {
@@ -1678,6 +2282,41 @@ function resetFilters() {
   border-color: #dee2e6;
 }
 
+.match-panel {
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.match-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: #334155;
+  font-size: 13px;
+}
+
+.match-line + .match-line {
+  margin-top: 8px;
+}
+
+.match-line strong {
+  display: block;
+  color: #0f172a;
+}
+
+.match-line span {
+  color: #64748b;
+}
+
+.match-line em {
+  color: #0284c7;
+  font-style: normal;
+  font-weight: 800;
+}
+
 /* 复制按钮在右侧 */
 .copy-icon-btn {
   width: 32px;
@@ -1964,5 +2603,231 @@ function resetFilters() {
   background: #e67e22;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(230, 126, 34, 0.4);
+}
+
+/* ===== AI匹配详情弹窗 ===== */
+.match-detail-overlay {
+  z-index: 1050;
+}
+
+.match-detail-content {
+  max-width: 440px;
+  width: 92%;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.match-detail-header {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.match-detail-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid #e2e8f0;
+}
+
+.match-detail-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+
+.match-detail-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-detail-name strong {
+  font-size: 20px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.match-detail-type {
+  font-size: 12px;
+  font-weight: 700;
+  color: #00a8e8;
+  background: #e0f2fe;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.match-detail-breed {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.match-similarity-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.match-similarity-tag.high {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.match-similarity-tag.medium {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.match-detail-owner {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.owner-section-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0369a1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.owner-info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.phone-row {
+  cursor: pointer;
+}
+
+.owner-label {
+  font-size: 13px;
+  color: #64748b;
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.owner-value {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.owner-phone-text {
+  color: #0284c7 !important;
+  font-size: 16px !important;
+}
+
+.copy-phone-btn {
+  margin-left: auto;
+  border: 1px solid #0284c7;
+  background: #fff;
+  color: #0284c7;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.copy-phone-btn:hover {
+  background: #0284c7;
+  color: #fff;
+}
+
+.match-detail-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #999;
+  padding: 12px 0;
+  font-size: 13px;
+}
+
+.mini-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f0f0f0;
+  border-top-color: #00a8e8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.match-pet-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: #f9fafb;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+
+.extra-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.extra-label {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 600;
+  width: 64px;
+  flex-shrink: 0;
+}
+
+.extra-value {
+  font-size: 14px;
+  color: #334155;
+}
+
+.extra-images-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.extra-images-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.extra-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #e2e8f0;
+}
+
+.match-detail-footer {
+  margin-top: 14px;
+  text-align: center;
 }
 </style>
