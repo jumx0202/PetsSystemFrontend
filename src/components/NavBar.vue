@@ -6,10 +6,10 @@
         <router-link to="/" class="nav-link">首页</router-link>
         <router-link to="/adoption" class="nav-link">领养/救助</router-link>
         <router-link to="/lost" class="nav-link">寻宠</router-link>
-        <router-link to="/forum" class="nav-link">论坛</router-link>
         <router-link to="/ai-recognize" class="nav-link">AI识别</router-link>
-        <router-link to="/pet-profile" class="nav-link">宠物档案</router-link>
+        <router-link to="/pet-directory" class="nav-link">宠物档案</router-link>
         <router-link to="/pet-location" class="nav-link">实时定位</router-link>
+        <router-link to="/forum" class="nav-link">论坛</router-link>
       </div>
       
       <!-- 右侧登录/用户区域 -->

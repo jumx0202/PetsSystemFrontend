@@ -55,6 +55,16 @@
         <div v-else-if="aiRecognitionError" class="ai-banner ai-error">
           {{ aiRecognitionError }}
         </div>
+        <div v-if="petFaceSearching" class="ai-banner ai-loading">
+          正在检索系统中的相似宠物档案...
+        </div>
+        <div v-if="petFaceMatches.length" class="petface-matches">
+          <div class="match-title">疑似匹配档案</div>
+          <div v-for="match in petFaceMatches" :key="match.petId" class="match-row">
+            <span>{{ match.petName }} · {{ match.breed || '未知品种' }}</span>
+            <strong>{{ (match.similarity * 100).toFixed(1) }}%</strong>
+          </div>
+        </div>
       </div>
 
       <div class="form-section">
@@ -278,7 +288,7 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 // @ts-ignore
 import request from '../api/request.js'
-import { recognizePetImage, type AiRecognitionResult } from '../utils/aiRecognition'
+import { recognizePetImage, saveLostPostMatches, searchSimilarPets, type AiRecognitionResult, type PetFaceMatchResult } from '../utils/aiRecognition'
 
 type CalendarDay = {
   date: number
@@ -312,6 +322,8 @@ const aiRecognizing = ref(false)
 const aiRecognitionMessage = ref('')
 const aiRecognitionError = ref('')
 const latestRecognition = ref<AiRecognitionResult | null>(null)
+const petFaceSearching = ref(false)
+const petFaceMatches = ref<PetFaceMatchResult[]>([])
 
 const showDatetimePicker = ref(false)
 const currentDate = ref(new Date())
@@ -380,6 +392,18 @@ const autoRecognize = async (file: File) => {
   }
 }
 
+const autoSearchSimilarPets = async (file: File) => {
+  petFaceSearching.value = true
+  petFaceMatches.value = []
+  try {
+    petFaceMatches.value = await searchSimilarPets(file, 3)
+  } catch (error) {
+    console.warn('相似宠物检索失败', error)
+  } finally {
+    petFaceSearching.value = false
+  }
+}
+
 const handleFileChange = async (e: Event) => {
   const target = e.target as HTMLInputElement
   const files = target.files
@@ -395,6 +419,7 @@ const handleFileChange = async (e: Event) => {
     const previews = await Promise.all(list.map(readFileAsDataUrl))
     uploadedImages.value.push(...previews)
     await autoRecognize(firstFile)
+    await autoSearchSimilarPets(firstFile)
   } catch (error) {
     console.error('处理图片失败', error)
     alert('图片处理失败，请重试')
@@ -409,6 +434,7 @@ const removeImage = (index: number) => {
     latestRecognition.value = null
     aiRecognitionMessage.value = ''
     aiRecognitionError.value = ''
+    petFaceMatches.value = []
   }
 }
 
@@ -661,6 +687,14 @@ const submitForm = async () => {
       : await request.post('/api/lost/publish', payload)
 
     if (res?.code === 200) {
+      const lostPostId = Number(res.data || editingPostId.value || 0)
+      if (lostPostId && petFaceMatches.value.length > 0) {
+        try {
+          await saveLostPostMatches(lostPostId, imageUrls[0] || '', petFaceMatches.value)
+        } catch (error) {
+          console.warn('保存相似匹配记录失败', error)
+        }
+      }
       alert(isEditMode.value ? '更新成功' : '发布成功')
       router.push('/personal')
       return
@@ -732,6 +766,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  text-align: left;
 }
 
 .form-section {
@@ -739,13 +774,19 @@ onMounted(async () => {
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  text-align: left;
 }
 
 .section-title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
   font-size: 15px;
   font-weight: 600;
   color: #333;
   margin-bottom: 16px;
+  text-align: left;
 }
 
 .upload-area {
@@ -817,10 +858,12 @@ onMounted(async () => {
 .upload-tip,
 .input-hint {
   margin: 12px 0 0;
+  text-align: left;
 }
 
 .field-tip {
   margin: 6px 0 0;
+  text-align: left;
 }
 
 .ai-banner {
@@ -842,11 +885,43 @@ onMounted(async () => {
   color: #d35f5f;
 }
 
+.petface-matches {
+  margin-top: 12px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.match-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1d4ed8;
+  margin-bottom: 8px;
+}
+
+.match-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.match-row + .match-row {
+  margin-top: 6px;
+}
+
+.match-row strong {
+  color: #0f172a;
+}
+
 .form-row {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 16px;
+  text-align: left;
 }
 
 .form-row:last-child {
@@ -854,9 +929,14 @@ onMounted(async () => {
 }
 
 .form-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
   font-size: 14px;
   color: #555;
   font-weight: 500;
+  text-align: left;
 }
 
 .required {
@@ -875,6 +955,7 @@ onMounted(async () => {
   background: #fafafa;
   outline: none;
   transition: all 0.2s;
+  text-align: left;
 }
 
 .form-input:focus,
@@ -893,13 +974,26 @@ onMounted(async () => {
 
 .select-wrapper {
   position: relative;
+  min-width: 0;
 }
 
 .custom-select {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   cursor: pointer;
+  min-width: 0;
+}
+
+.custom-select span {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
 }
 
 .custom-select .placeholder {
@@ -907,6 +1001,7 @@ onMounted(async () => {
 }
 
 .arrow-icon {
+  flex: 0 0 auto;
   color: #999;
   transition: transform 0.2s;
 }
@@ -1142,6 +1237,7 @@ onMounted(async () => {
   box-sizing: border-box;
   font-family: inherit;
   line-height: 1.6;
+  text-align: left;
 }
 
 .form-textarea:focus {
