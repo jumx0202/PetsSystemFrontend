@@ -10,6 +10,7 @@ import Personal from '../views/Personal.vue'
 import AiRecognize from '../views/AiRecognize.vue'
 import AIChat from '../views/AIChat.vue';
 import AiModelInfo from "@/views/AiModelInfo.vue";
+import PetDirectory from "@/views/PetDirectory.vue";
 // @ts-ignore
 import TestView from '../views/TestView.vue'
 
@@ -63,12 +64,7 @@ const router = createRouter({
     },
     {
       path: '/pet-profile',
-      name: 'petProfile',
-      component: () => import('../views/PetProfile.vue'),
-      meta: {
-        requiresAuth: true,
-        hideNavBar: true
-      }
+      redirect: '/pet-directory'
     },
     {
       path: '/ai-model-info',
@@ -95,6 +91,11 @@ const router = createRouter({
       name: 'petLocation',
       component: () => import('../views/PetLocation.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/pet-directory',
+      name: 'petDirectory',
+      component: PetDirectory,
     }
   ],
 })

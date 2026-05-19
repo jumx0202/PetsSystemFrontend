@@ -37,10 +37,16 @@
               <div class="item-sub">
                 品种：{{ pet.breed || '未知' }} | 年龄：{{ pet.age !== null ? pet.age + '岁' : '未知' }} | 体重：{{ pet.weight ? pet.weight + 'kg' : '未知' }}
               </div>
+              <div class="face-status" :class="{ ready: pet.faceFeatureReady }">
+                {{ pet.faceFeatureReady ? '已建立个体识别特征' : '未建立个体识别特征' }}
+              </div>
               <div class="item-sub chip" v-if="pet.chipNumber">芯片：{{ pet.chipNumber }}</div>
             </div>
           </div>
           <div class="publish-actions">
+            <button class="face-btn" @click="rebuildFaceFeature(pet)">
+              {{ rebuildingPetId === pet.id ? '建立中...' : '建立特征' }}
+            </button>
             <button class="edit-btn" @click="openForm(pet)">编辑</button>
             <button class="delete-btn" @click="deletePet(pet)">删除</button>
           </div>
@@ -117,8 +123,33 @@
             </div>
 
             <div class="form-group">
-              <label>宠物头像 URL</label>
-              <input type="text" v-model="form.avatar" placeholder="图片链接 (可选)" />
+              <label>宠物头像</label>
+              <div class="avatar-row">
+                <img :src="form.avatar || getDefaultPetAvatar(form.petType)" class="avatar-preview" alt="宠物头像预览" />
+                <div class="avatar-actions">
+                  <input type="text" v-model="form.avatar" placeholder="图片链接或上传图片" />
+                  <input ref="avatarInput" type="file" accept="image/jpeg,image/png" style="display: none" @change="handleAvatarChange" />
+                  <button type="button" class="upload-avatar-btn" :disabled="uploadingAvatar" @click="avatarInput?.click()">
+                    {{ uploadingAvatar ? '上传中...' : '上传头像' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>宠物照片 <span class="field-tip-inline">（多张，用于 AI 个体识别）</span></label>
+              <div class="multi-image-grid">
+                <div v-for="(url, idx) in form.images" :key="idx" class="multi-image-item">
+                  <img :src="normalizePetImageUrl(url)" alt="宠物照片" />
+                  <button type="button" class="remove-img-btn" @click="removeImage(idx)">×</button>
+                </div>
+                <div class="multi-image-add" @click="imagesInput?.click()">
+                  <span class="add-icon">+</span>
+                  <span>添加照片</span>
+                  <input ref="imagesInput" type="file" accept="image/jpeg,image/png" multiple style="display: none" @change="handleMultiImageChange" />
+                </div>
+              </div>
+              <p class="field-tip">上传多角度照片可提升 PetFace 2.0 识别准确率。保存后系统会自动建立个体识别特征。</p>
             </div>
           </form>
         </div>
@@ -162,9 +193,22 @@ const getDefaultPetAvatar = (type: number | null | undefined) => {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
 }
 
+const API_BASE_URL = 'http://localhost:8080'
+const normalizePetImageUrl = (url: string) => {
+  if (!url) return ''
+  if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:')) return url
+  if (url.startsWith('/upload/') || url.startsWith('/images/')) return `${API_BASE_URL}${url}`
+  return url
+}
+
 const loading = ref(false)
 const submitting = ref(false)
+const uploadingAvatar = ref(false)
+const uploadingImages = ref(false)
+const rebuildingPetId = ref<number | null>(null)
 const pets = ref<any[]>([])
+const avatarInput = ref<HTMLInputElement | null>(null)
+const imagesInput = ref<HTMLInputElement | null>(null)
 
 const showFormModal = ref(false)
 const isEdit = ref(false)
@@ -180,7 +224,8 @@ const form = ref({
   color: '',
   distinctiveFeatures: '',
   chipNumber: '',
-  avatar: ''
+  avatar: '',
+  images: [] as string[]
 })
 
 const goBack = () => router.back()
@@ -235,7 +280,8 @@ const openForm = (pet: any | null) => {
       color: pet.color || '',
       distinctiveFeatures: pet.distinctiveFeatures || '',
       chipNumber: pet.chipNumber || '',
-      avatar: pet.avatar || ''
+      avatar: pet.avatar || '',
+      images: Array.isArray(pet.images) ? [...pet.images] : []
     }
   } else {
     isEdit.value = false
@@ -250,7 +296,8 @@ const openForm = (pet: any | null) => {
       color: '',
       distinctiveFeatures: '',
       chipNumber: '',
-      avatar: ''
+      avatar: '',
+      images: []
     }
   }
   showFormModal.value = true
@@ -258,6 +305,66 @@ const openForm = (pet: any | null) => {
 
 const closeForm = () => {
   showFormModal.value = false
+}
+
+const handleAvatarChange = async (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    Message.warning('请上传 JPG 或 PNG 格式的图片')
+    return
+  }
+  uploadingAvatar.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await request.post('/api/upload/image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30000
+    })
+    if (res.code === 200 && res.data) {
+      form.value.avatar = res.data
+      Message.success('头像上传成功')
+    } else {
+      Message.error(res.message || '头像上传失败')
+    }
+  } catch (err) {
+    console.error('头像上传异常', err)
+    Message.error('头像上传异常，请检查网络')
+  } finally {
+    uploadingAvatar.value = false
+    if (avatarInput.value) avatarInput.value.value = ''
+  }
+}
+
+const removeImage = (idx: number) => {
+  form.value.images.splice(idx, 1)
+}
+
+const handleMultiImageChange = async (event: Event) => {
+  const files = Array.from((event.target as HTMLInputElement).files || [])
+  if (!files.length) return
+  uploadingImages.value = true
+  try {
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await request.post('/api/upload/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000
+      })
+      if (res.code === 200 && res.data) {
+        form.value.images.push(res.data)
+      }
+    }
+    Message.success('照片上传成功')
+  } catch (err) {
+    Message.error('照片上传失败，请检查网络')
+  } finally {
+    uploadingImages.value = false
+    if (imagesInput.value) imagesInput.value.value = ''
+  }
 }
 
 const submitForm = async () => {
@@ -305,6 +412,29 @@ const deletePet = async (pet: any) => {
   } catch (err) {
     console.error('删除宠物异常', err)
     Message.error('删除异常，请检查网络')
+  }
+}
+
+const rebuildFaceFeature = async (pet: any) => {
+  if (!pet?.id) return
+  if (!pet.avatar) {
+    Message.warning('请先为宠物上传头像')
+    return
+  }
+  rebuildingPetId.value = pet.id
+  try {
+    const res = await request.post(`/api/pet/${pet.id}/face/rebuild`)
+    if (res.code === 200) {
+      Message.success('个体识别特征已建立')
+      await fetchPets()
+    } else {
+      Message.error(res.message || '建立特征失败')
+    }
+  } catch (err) {
+    console.error('建立个体识别特征异常', err)
+    Message.error('建立特征异常，请确认 AI 服务已启动')
+  } finally {
+    rebuildingPetId.value = null
   }
 }
 
@@ -471,7 +601,7 @@ onMounted(() => {
   gap: 8px;
 }
 
-.edit-btn, .delete-btn {
+.edit-btn, .delete-btn, .face-btn {
   border: none;
   background: #fff;
   padding: 6px 12px;
@@ -489,6 +619,25 @@ onMounted(() => {
 .delete-btn {
   color: #f44336;
   border-color: #ffcdd2;
+}
+
+.face-btn {
+  color: #0f766e;
+  border-color: #99f6e4;
+}
+
+.face-status {
+  align-self: flex-start;
+  font-size: 12px;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.face-status.ready {
+  color: #15803d;
+  background: #dcfce7;
 }
 
 .primary-btn {
@@ -602,6 +751,124 @@ onMounted(() => {
 .form-group select:focus,
 .form-group textarea:focus {
   border-color: #00a8e8;
+}
+
+.avatar-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.avatar-actions {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upload-avatar-btn {
+  border: 1px solid #00a8e8;
+  background: #fff;
+  color: #00a8e8;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.upload-avatar-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.field-tip {
+  margin: 0;
+  color: #888;
+  font-size: 12px;
+}
+
+.field-tip-inline {
+  font-size: 12px;
+  color: #aaa;
+  font-weight: 400;
+}
+
+.multi-image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.multi-image-item {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.multi-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.remove-img-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.multi-image-add {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  border: 1.5px dashed #ccc;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #999;
+  font-size: 12px;
+  gap: 2px;
+  transition: border-color 0.2s;
+}
+
+.multi-image-add:hover {
+  border-color: #00a8e8;
+  color: #00a8e8;
+}
+
+.add-icon {
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 1;
 }
 
 .form-footer {
