@@ -408,8 +408,24 @@ const sendMessage = async () => {
         buffer = parts.pop() || ''
         
         for (const part of parts) {
-          if (part.startsWith('data:')) {
-            const dataStr = part.substring(5).trim()
+          const eventLine = part.split('\n').find(l => l.trim().startsWith('event:'))
+          const eventName = eventLine?.split(':').slice(1).join(':').trim()
+          const dataLine = part.split('\n').find(l => l.trim().startsWith('data:'))
+          const dataStr = dataLine ? dataLine.substring(dataLine.indexOf(':') + 1).trim() : ''
+
+          if (eventName === 'error') {
+            let errData = dataStr || 'AI 服务返回错误'
+            try {
+              const dataObj = JSON.parse(errData)
+              if (dataObj.error) errData = dataObj.error
+              if (dataObj.message) errData = dataObj.message
+            } catch (ex) {}
+            assistantMsg.content += '\n\n[系统提示] ' + errData
+            await scrollToBottom()
+            continue
+          }
+
+          if (dataLine) {
             if (dataStr === '[DONE]') {
                break
             }
@@ -433,16 +449,6 @@ const sendMessage = async () => {
                  assistantMsg.content += '\n\n' + dataStr
               }
             }
-          } else if (part.startsWith('event: error')) {
-            const dataLine = part.split('\n').find(l => l.startsWith('data:'))
-            if (dataLine) {
-               let errData = dataLine.substring(5).trim()
-               try {
-                  const dataObj = JSON.parse(errData)
-                  if(dataObj.error) errData = dataObj.error
-               } catch(ex){}
-               assistantMsg.content += '\n\n[系统提示] ' + errData
-            }
           }
         }
       }
@@ -450,6 +456,11 @@ const sendMessage = async () => {
       // 等待队列动画播放完毕
       while (isAnimating && token === generationToken.value) {
         await sleep(50)
+      }
+
+      if (token === generationToken.value && !assistantMsg.content.trim()) {
+        assistantMsg.content = '抱歉，AI 暂时没有返回有效内容。请检查后端大模型配置或稍后重试。'
+        await scrollToBottom()
       }
     }
   } catch (error: any) {
